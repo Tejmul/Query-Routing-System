@@ -906,7 +906,8 @@ async function pollJob(id) {
     const job = await api(`/api/v1/jobs/${id}`);
     const s = job.summary || {};
     if (job.status === "queued") setJobStage("Waiting for the previous job to finish…", 0.1);
-    if (job.status === "running") {
+    if (job.status === "running" && !job.processed) setJobStage("Starting up: loading the model on every CPU core…", 0.1);
+    if (job.status === "running" && job.processed) {
       setJobStage(`Routing ${fmtNum(job.processed)} of ${fmtNum(job.total)} · ${fmtNum(s.rows_per_second || 0)} messages/s`,
         0.1 + 0.9 * job.progress);
     }
