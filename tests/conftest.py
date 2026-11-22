@@ -7,6 +7,9 @@ _tmp = Path(tempfile.mkdtemp(prefix="bankq-test-"))
 os.environ["BANKQ_DATABASE_URL"] = f"sqlite:///{_tmp / 'test.db'}"
 os.environ["BANKQ_LOG_JSON"] = "false"
 os.environ["BANKQ_API_KEYS"] = ""
+os.environ["BANKQ_JOBS_DIR"] = str(_tmp / "jobs")
+os.environ["BANKQ_BULK_WORKERS"] = "1"
+os.environ["BANKQ_BULK_CHUNK_SIZE"] = "500"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
