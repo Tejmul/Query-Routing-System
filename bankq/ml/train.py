@@ -32,6 +32,7 @@ from sklearn.metrics import (
     top_k_accuracy_score,
 )
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.pipeline import Pipeline
 
 from ..config import get_settings
 from ..data.loaders import load_dataset
@@ -203,9 +204,14 @@ def run(include_feedback=False, promote=True):
 
     pred, cat_metrics = evaluate_category(cat_model, X_test, y_test)
 
-    # 2. Sub-intent model: same family and settings, trained on rows with a real intent label.
-    has_intent = train["source"] != "feedback"
-    intent_model = clone(cat_model).fit(X_train[has_intent], train.loc[has_intent, "intent"])
+    # 2. Sub-intent model: a second head on the SAME text features, so serving turns each message
+    #    into numbers once and scores both heads from that (one forward pass). Same family and
+    #    settings, trained on the rows that have a real intent label.
+    features = cat_model.named_steps["features"]
+    has_intent = (train["source"] != "feedback").to_numpy()
+    intent_clf = clone(cat_model.named_steps["clf"]).fit(
+        features.transform(X_train[has_intent]), train.loc[has_intent, "intent"])
+    intent_model = Pipeline([("features", features), ("clf", intent_clf)])
     intent_metrics = evaluate_intent(intent_model, X_test, test["intent"])
     log.info("intent model evaluated", extra=intent_metrics)
 
@@ -213,8 +219,9 @@ def run(include_feedback=False, promote=True):
 
     # 3. Register the version with its artifacts and model card.
     version, path = registry.new_version_dir()
-    joblib.dump(cat_model, path / "category.joblib")
-    joblib.dump(intent_model, path / "intent.joblib")
+    # One file, so the shared features stay shared after loading.
+    joblib.dump({"features": features, "category": cat_model.named_steps["clf"], "intent": intent_clf},
+                path / "model.joblib")
     lr_terms = top_terms(searches["logistic_regression"].best_estimator_)
     save_figures(path / "figures", train, test, results, cat_metrics["confusion_matrix"], best["model"], lr_terms)
     test.assign(predicted=pred)[pred != y_test][["text", "intent", "category", "predicted"]] \
