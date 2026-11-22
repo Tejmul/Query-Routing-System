@@ -88,7 +88,9 @@ The response (abridged) shows the masked text, and the rule that caught what the
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/v1/classify` | Route one message; creates a ticket unless `create_ticket: false` |
-| POST | `/api/v1/classify/batch` | Up to 1,000 messages; optional ticket creation |
+| POST | `/api/v1/classify/batch` | Up to 1,000 messages, answered instantly; optional ticket creation |
+| POST | `/api/v1/jobs` | Upload a file of any size; returns a job to poll |
+| GET | `/api/v1/jobs/{id}`, `/preview`, `/result` | Job progress, first rows, routed CSV download |
 | POST | `/api/v1/classify/csv` | CSV upload with a `text` column |
 | GET | `/api/v1/tickets` | Queue: filter by team, status, priority, category, review, search |
 | GET / PATCH | `/api/v1/tickets/{ref}` | Ticket with history; change status, re-route, assign, add a note |
@@ -126,6 +128,7 @@ All  settings are `BANKQ_*` environment variables (see `.env.example`). The impo
 - `BANKQ_API_KEYS`: comma-separated keys. When set, every `/api/v1` call needs an `X-API-Key` header, and the UI asks for one. **When empty, auth is off. Only run like that locally.**
 - `BANKQ_DATABASE_URL`: SQLite by default; any SQLAlchemy URL, e.g. Postgres.
 - `BANKQ_RATE_LIMIT_PER_MINUTE`, `BANKQ_MAX_BATCH_SIZE`, `BANKQ_LOG_JSON`.
+- `BANKQ_BULK_WORKERS` (0 = one per CPU core), `BANKQ_BULK_CHUNK_SIZE` (default 20,000), `BANKQ_MAX_UPLOAD_MB` (default 1,024).
 
 ## Model lifecycle
 
