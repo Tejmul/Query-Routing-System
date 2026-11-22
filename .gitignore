@@ -10,3 +10,6 @@ data/*.db-*
 models/registry/v*/
 !models/registry/.gitkeep
 models/registry/production.json
+data/bulk/
+data/jobs/
+.DS_Store
