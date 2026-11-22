@@ -420,7 +420,9 @@ tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transpa
 td.low { color: var(--text-3); }
 
 /* ===== Bulk job ===== */
-.job { margin-top: 16px; padding: 20px; display: grid; gap: 16px; }
+.job { margin-top: 16px; padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.job > * { min-width: 0; }
+.job .hint { overflow-wrap: anywhere; }
 .job-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .job-name { font-weight: 600; font-size: 15px; word-break: break-all; }
 .job-head .btn { text-decoration: none; }
