@@ -65,4 +65,6 @@ flowchart LR
 - The rate limiter is in-process; with several replicas, move it to Redis.
 - The container runs one uvicorn worker: with SQLite, several workers race to create tables on startup. Scale by running more containers against Postgres.
 - SQLite is fine for a demo and a single instance. For production set `BANKQ_DATABASE_URL` to Postgres (TASKS.md #4 adds migrations).
-- Inference is about 1 ms per message on a laptop CPU. The explanation step re-scores the message once per word, so batch endpoints skip it.
+- Bulk files: about 13,000 messages per second per core and one million in 19.3 s on an 8-core laptop (see README). For more, split the file and run `python -m bankq.bulk` on several machines; each part is independent.
+- The bulk jobs queue is in-process and runs one job at a time. With several API servers, move it to a shared queue (Celery or RQ with Redis) and keep the files in object storage; the bulk engine stays the same.
+- The explanation step re-scores a message once per word, so only the single-message endpoint uses it.
