@@ -13,12 +13,13 @@ from fastapi.staticfiles import StaticFiles
 from .. import __version__
 from ..config import ROOT, get_settings
 from ..db.session import init_db
+from ..jobs import JobManager
 from ..logging_setup import setup_logging
 from ..ml.predictor import Predictor
 from ..routing.router import Router
 from ..routing.rules import RuleSet
 from .observability import RequestContextMiddleware
-from .routes import classify, system, tickets
+from .routes import classify, jobs, system, tickets
 
 log = logging.getLogger("bankq.api")
 WEB_DIR = ROOT / "web"
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
     s = get_settings()
     setup_logging(s.log_level, s.log_json)
     init_db()
+    app.state.jobs = JobManager()
     try:
         app.state.router = build_router()
         log.info("model loaded", extra={"model_version": app.state.router.model_version})
@@ -55,6 +57,7 @@ app.add_middleware(RequestContextMiddleware)
 app.include_router(system.router)
 app.include_router(classify.router)
 app.include_router(tickets.router)
+app.include_router(jobs.router)
 
 
 @app.exception_handler(Exception)
