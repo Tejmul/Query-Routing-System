@@ -14,6 +14,11 @@ Input: a CSV with a header (column `text`, `query` or `message`, or name it with
 
 import csv
 import logging
+import multiprocessing as mp
+import os
+import time
+from collections import Counter, deque
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -181,3 +186,105 @@ def count_rows(path):
             return sum(buf.count(b"\n") for buf in iter(lambda: f.read(1 << 20), b""))
     with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
         return max(sum(1 for _ in csv.reader(f)) - 1, 0)
+
+
+# ---------- Workers ----------
+
+_worker_router: BulkRouter | None = None
+
+
+def _init_worker(version):
+    global _worker_router
+    logging.disable(logging.INFO)
+    _worker_router = BulkRouter.from_settings(version)
+
+
+def route_frame(chunk: pd.DataFrame, router: BulkRouter) -> pd.DataFrame:
+    """Route one chunk (columns row, id, text); empty messages are skipped."""
+    keep = chunk["text"].astype(str).str.strip() != ""
+    part = chunk[keep]
+    routed = router.route(part["text"].tolist()) if len(part) else pd.DataFrame(columns=OUTPUT_COLUMNS[2:])
+    routed.insert(0, "id", part["id"].to_numpy())
+    routed.insert(0, "row", part["row"].to_numpy())
+    return routed[OUTPUT_COLUMNS]
+
+
+def _route_chunk(chunk: pd.DataFrame, router: BulkRouter | None = None):
+    """Route a chunk and return (csv_text, tallies). Formatting and counting happen here, in the
+    worker, so the parent process only writes text and the work spreads across all cores."""
+    routed = route_frame(chunk, router or _worker_router)
+    rules = Counter()
+    for r in routed["rules"]:
+        if r:
+            rules.update(r.split(";"))
+    tallies = {"rows": len(chunk), "routed": len(routed), "urgent": int((routed["priority"] == "urgent").sum()),
+               "needs_review": int(routed["needs_review"].sum()),
+               "categories": routed["category"].value_counts().to_dict(), "rules": dict(rules)}
+    return routed.to_csv(header=False, index=False, lineterminator="\n"), tallies
+
+
+def default_workers():
+    return max(1, min(os.cpu_count() or 1, get_settings().bulk_workers or (os.cpu_count() or 1)))
+
+
+def run(input_path, output_path, workers=None, chunk_size=None, text_column=None, progress=None, version=None):
+    """Route every message in input_path and write the results to output_path (CSV).
+
+    progress(processed_rows, summary_so_far) is called after each chunk. Returns the final summary.
+    """
+    s = get_settings()
+    workers = workers or default_workers()
+    chunk_size = chunk_size or s.bulk_chunk_size
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = output_path.with_suffix(output_path.suffix + ".part")
+
+    counts, rules, start = Counter(), Counter(), time.perf_counter()
+    summary = {"rows": 0, "routed": 0, "skipped_empty": 0, "urgent": 0, "needs_review": 0}
+
+    def consume(result, writer_state):
+        text, t = result
+        writer_state["f"].write(text)
+        summary["rows"] += t["rows"]
+        summary["routed"] += t["routed"]
+        summary["skipped_empty"] += t["rows"] - t["routed"]
+        summary["urgent"] += t["urgent"]
+        summary["needs_review"] += t["needs_review"]
+        counts.update(t["categories"])
+        rules.update(t["rules"])
+        if progress:
+            progress(summary["rows"], _finish(summary, counts, rules, start, workers))
+
+    chunks = iter_chunks(input_path, chunk_size, text_column)
+    try:
+        with open(tmp, "w", encoding="utf-8", newline="") as f:
+            f.write(",".join(OUTPUT_COLUMNS) + "\n")
+            state = {"f": f}
+            if workers == 1:
+                router = BulkRouter.from_settings(version)
+                for chunk in chunks:
+                    consume(_route_chunk(chunk, router), state)
+            else:
+                # spawn is safe from threads (the API runs jobs in a thread). Unlike multiprocessing.Pool,
+                # a worker that dies makes the job fail with BrokenProcessPool instead of hanging.
+                ctx = mp.get_context("spawn")
+                with ProcessPoolExecutor(workers, mp_context=ctx, initializer=_init_worker, initargs=(version,)) as pool:
+                    pending = deque()  # bounded, so only a few chunks are in memory at once
+                    for chunk in chunks:
+                        pending.append(pool.submit(_route_chunk, chunk))
+                        if len(pending) >= workers * 2:
+                            consume(pending.popleft().result(), state)
+                    while pending:
+                        consume(pending.popleft().result(), state)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    tmp.replace(output_path)
+    return _finish(summary, counts, rules, start, workers)
+
+
+def _finish(summary, counts, rules, start, workers):
+    seconds = time.perf_counter() - start
+    return {**summary, "categories": {c: counts.get(c, 0) for c in CATEGORIES}, "rules": dict(rules),
+            "seconds": round(seconds, 2), "rows_per_second": round(summary["rows"] / seconds) if seconds else None,
+            "workers": workers}
