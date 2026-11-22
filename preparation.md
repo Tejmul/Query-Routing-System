@@ -273,7 +273,7 @@ Loans are never confused with anything, which again reflects the clean template 
 
 ### Topic model
 
-- **90.0%** of messages get exactly the right topic out of 83.
+- **89.9%** of messages get exactly the right topic out of 83.
 - The right topic is in its **top 3 guesses 96.7%** of the time.
 
 ### Release check
@@ -282,7 +282,7 @@ Loans are never confused with anything, which again reflects the clean template 
 |---|---|---|---|
 | Balanced score | at least 0.93 | 0.974 | Passed |
 | Fraud caught | at least 90% | 95.8% | Passed |
-| Topic accuracy | at least 80% | 90.0% | Passed |
+| Topic accuracy | at least 80% | 89.9% | Passed |
 | Compared with the live model | no drop of more than 0.01 | passed | Passed |
 
 ---
@@ -421,7 +421,7 @@ We removed any sentence that appeared in both training and test sets. We chose t
 It had the best practice score (0.9663 vs 0.9655 for Linear SVM before rounding), the best final accuracy (97.3%), it tells us how sure it is (which our 60% and 10% rules need), it trains in about a minute on a laptop, and its decisions are easy to explain.
 
 **12. Why do you need a topic model as well as a category model?**
-The category picks the team. The topic, out of 83, tells the agent exactly what the problem is, such as "lost or stolen card", so they can start helping straight away. It gets the exact topic right 90.0% of the time, and the right topic is in its top 3 guesses 96.7% of the time.
+The category picks the team. The topic, out of 83, tells the agent exactly what the problem is, such as "lost or stolen card", so they can start helping straight away. It gets the exact topic right 89.9% of the time, and the right topic is in its top 3 guesses 96.7% of the time.
 
 **13. Can the bank change the rules without a programmer retraining the model?**
 Yes. The rules (the 60% review line, the fraud phrases, the priority boosts) live in a settings file. They can be edited without retraining.
@@ -449,7 +449,7 @@ There are 49 automated tests, and GitHub Actions runs them automatically on ever
 | **10,519** | Training messages: 9,974 Banking77 + 544 loan + 1 agent correction. |
 | **0.974** | Balanced score (macro F1) across the 5 categories; 1.0 is perfect. |
 | **95.8%** | Fraud caught: 230 of 240 real fraud test messages. |
-| **90.0% / 96.7%** | Topic model: exactly right / right topic in its top 3 guesses. |
+| **89.9% / 96.7%** | Topic model: exactly right / right topic in its top 3 guesses. |
 | **83** | Topics the system knows: 77 from Banking77 + 6 loan topics. |
 | **60** | Loan templates we wrote to fill the gap (Banking77 has no loans). |
 | **60%** | Below this level of sureness, a person checks the message. |
