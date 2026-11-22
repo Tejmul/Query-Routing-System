@@ -1,4 +1,4 @@
-.PHONY: install train retrain promote models serve dev seed test lint docker-build docker-up clean
+.PHONY: install train retrain promote models serve dev seed bulk-demo bulk test lint docker-build docker-up clean
 
 PY ?= .venv/bin/python
 PORT ?= 8077
@@ -27,6 +27,12 @@ dev:              ## run with auto-reload and readable logs
 
 seed:             ## fill the database with 14 days of demo tickets
 	BANKQ_LOG_JSON=false $(PY) -m scripts.seed_demo --reset
+
+bulk-demo:        ## write a 1,000,000-message demo file to data/bulk/demo_1m.csv
+	$(PY) -m scripts.make_bulk_demo --n 1000000 --out data/bulk/demo_1m.csv
+
+bulk:             ## route a big file: make bulk IN=messages.csv OUT=routed.csv
+	$(PY) -m bankq.bulk $(IN) -o $(OUT)
 
 test:
 	$(PY) -m pytest -q
