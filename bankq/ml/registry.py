@@ -4,8 +4,8 @@ Layout:
     models/registry/
         production.json              {"version": "...", "promoted_at": "..."}
         v20261027-153000/
-            category.joblib          category classifier pipeline
-            intent.joblib            sub-intent classifier pipeline
+            model.joblib             shared text features + category head + sub-intent head
+                                     (older versions: category.joblib and intent.joblib pipelines)
             model_card.json          data, parameters, metrics and quality gate result
             figures/*.png
             misclassified.csv
@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import joblib
+from sklearn.pipeline import Pipeline
 
 from ..config import get_settings
 
@@ -82,12 +83,17 @@ class ModelRegistry:
         if not version:
             raise FileNotFoundError("No production model. Train one with: python -m bankq.ml.train")
         path = self.path(version)
-        return {
-            "version": version,
-            "category": joblib.load(path / "category.joblib"),
-            "intent": joblib.load(path / "intent.joblib"),
-            "card": self.card(version),
-        }
+        if (path / "model.joblib").exists():
+            parts = joblib.load(path / "model.joblib")
+            category = Pipeline([("features", parts["features"]), ("clf", parts["category"])])
+            intent = Pipeline([("features", parts["features"]), ("clf", parts["intent"])])
+            shared = True
+        else:
+            category = joblib.load(path / "category.joblib")
+            intent = joblib.load(path / "intent.joblib")
+            shared = False
+        return {"version": version, "category": category, "intent": intent, "shared_features": shared,
+                "card": self.card(version)}
 
 
 def main():
