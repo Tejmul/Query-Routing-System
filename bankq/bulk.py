@@ -12,7 +12,9 @@ Input: a CSV with a header (column `text`, `query` or `message`, or name it with
 `id` column is copied through), or a .txt file with one message per line.
 """
 
+import csv
 import logging
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -126,3 +128,56 @@ class BulkRouter:
             "topic_confidence": np.round(int_p[np.arange(n), top], 4),
             "rules": fired,
         })
+
+
+# ---------- File streaming ----------
+
+def _text_column(columns, wanted):
+    if wanted:
+        if wanted not in columns:
+            raise ValueError(f"Column {wanted!r} not found. Columns: {', '.join(columns)}")
+        return wanted
+    lowered = {c.strip().lower(): c for c in columns}
+    for name in TEXT_COLUMNS:
+        if name in lowered:
+            return lowered[name]
+    raise ValueError(f"No text column found. Name one of {TEXT_COLUMNS}, or pass --text-column. "
+                     f"Columns: {', '.join(columns)}")
+
+
+def iter_chunks(path, chunk_size=20000, text_column=None):
+    """Yield DataFrames with columns row, id, text. Row numbers are 1-based data rows."""
+    path = Path(path)
+    row = 0
+    if path.suffix.lower() == ".txt":
+        with open(path, encoding="utf-8-sig", errors="replace") as f:
+            buf = []
+            for line in f:
+                buf.append(line.rstrip("\n"))
+                if len(buf) == chunk_size:
+                    yield pd.DataFrame({"row": range(row + 1, row + 1 + len(buf)), "id": "", "text": buf})
+                    row += len(buf)
+                    buf = []
+            if buf:
+                yield pd.DataFrame({"row": range(row + 1, row + 1 + len(buf)), "id": "", "text": buf})
+        return
+    header = pd.read_csv(path, nrows=0, encoding="utf-8-sig").columns.tolist()
+    col = _text_column(header, text_column)
+    id_col = next((c for c in header if c.strip().lower() == "id"), None)
+    usecols = [col] + ([id_col] if id_col else [])
+    for df in pd.read_csv(path, usecols=usecols, chunksize=chunk_size, dtype=str, keep_default_na=False,
+                          encoding="utf-8-sig", on_bad_lines="skip"):
+        out = pd.DataFrame({"row": range(row + 1, row + 1 + len(df)),
+                            "id": df[id_col].to_numpy() if id_col else "", "text": df[col].to_numpy()})
+        row += len(df)
+        yield out
+
+
+def count_rows(path):
+    """Number of messages, for progress bars. CSV rows are counted with a real CSV parser, because a
+    quoted message can contain line breaks (about a second per million rows)."""
+    if Path(path).suffix.lower() == ".txt":
+        with open(path, "rb") as f:
+            return sum(buf.count(b"\n") for buf in iter(lambda: f.read(1 << 20), b""))
+    with open(path, encoding="utf-8-sig", errors="replace", newline="") as f:
+        return max(sum(1 for _ in csv.reader(f)) - 1, 0)
