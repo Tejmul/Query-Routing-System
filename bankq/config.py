@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 120
     max_batch_size: int = 1000
 
+    # Bulk routing (python -m bankq.bulk, and /api/v1/jobs for file uploads).
+    bulk_workers: int = 0  # processes per bulk job; 0 means one per CPU core
+    bulk_chunk_size: int = 20000
+    jobs_dir: Path = ROOT / "data" / "jobs"
+    max_upload_mb: int = 1024
+
     @property
     def api_key_set(self) -> set[str]:
         return {k.strip() for k in self.api_keys.split(",") if k.strip()}
