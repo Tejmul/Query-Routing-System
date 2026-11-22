@@ -227,14 +227,18 @@ def default_workers():
     return max(1, min(os.cpu_count() or 1, get_settings().bulk_workers or (os.cpu_count() or 1)))
 
 
-def run(input_path, output_path, workers=None, chunk_size=None, text_column=None, progress=None, version=None):
+def run(input_path, output_path, workers=None, chunk_size=None, text_column=None, progress=None, version=None,
+        total=None):
     """Route every message in input_path and write the results to output_path (CSV).
 
-    progress(processed_rows, summary_so_far) is called after each chunk. Returns the final summary.
+    progress(processed_rows, summary_so_far) is called after each chunk. Pass total (the row count) to
+    avoid starting more worker processes than there are chunks. Returns the final summary.
     """
     s = get_settings()
     workers = workers or default_workers()
     chunk_size = chunk_size or s.bulk_chunk_size
+    if total is not None:  # a small file shouldn't pay for starting eight processes
+        workers = max(1, min(workers, -(-total // chunk_size)))
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = output_path.with_suffix(output_path.suffix + ".part")
