@@ -53,7 +53,7 @@ On the held-out test set of 3,192 queries, which is never used for model selecti
 | Category accuracy | **97.3%** |
 | Macro F1 | **0.974** |
 | Fraud recall | **95.8%** |
-| Topic accuracy, 83 topics | **90.0%** (96.7% within the top 3) |
+| Topic accuracy, 83 topics | **89.9%** (96.7% within the top 3) |
 | Majority-class baseline | 46.4% accuracy |
 
 | Model family (tuned) | CV macro F1 | Test macro F1 |
