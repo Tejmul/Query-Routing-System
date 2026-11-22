@@ -21,11 +21,18 @@ class Settings(BaseSettings):
     raw_data_dir: Path = ROOT / "data" / "raw"
     processed_data_dir: Path = ROOT / "data" / "processed"
     reports_dir: Path = ROOT / "reports"
+    feedback_path: Path = ROOT / "data" / "feedback" / "corrections.csv"
 
     # Comma-separated keys. Empty means auth is off (local development only).
     api_keys: str = ""
     rate_limit_per_minute: int = 120
     max_batch_size: int = 1000
+
+    # Bulk routing (python -m bankq.bulk, and /api/v1/jobs for file uploads).
+    bulk_workers: int = 0  # processes per bulk job; 0 means one per CPU core
+    bulk_chunk_size: int = 20000
+    jobs_dir: Path = ROOT / "data" / "jobs"
+    max_upload_mb: int = 1024
 
     @property
     def api_key_set(self) -> set[str]:

@@ -32,13 +32,21 @@ def _loans(rows):
 
 
 def load_feedback():
-    """Agent corrections from the ticket database, used as extra training data."""
+    """Agent corrections used as extra training data.
+
+    Reads the ticket database and data/feedback/corrections.csv. The file keeps accepted corrections
+    permanently, so resetting or reseeding the database never silently changes what the model learns.
+    """
     from ..db.repository import TicketRepository
     from ..db.session import session_scope
 
     with session_scope() as s:
         rows = TicketRepository(s).feedback_examples()
     df = pd.DataFrame(rows, columns=["text", "category"])
+    path = get_settings().feedback_path
+    if path.exists():
+        df = pd.concat([pd.read_csv(path, usecols=["text", "category"]), df], ignore_index=True)
+    df = df.drop_duplicates(subset="text", keep="first")
     df["intent"] = "agent_feedback"
     df["source"] = "feedback"
     return df[COLUMNS]
