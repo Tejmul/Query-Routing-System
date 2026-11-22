@@ -44,6 +44,10 @@ flowchart LR
 
 **Two models instead of one.** The category model (5 classes) decides routing; the sub-intent model (83 classes) gives agents the specific topic. Mapping the 83-class prediction up to a category would route almost as accurately (97.2% vs 97.3% on the test set). The separate category model exists because its probabilities are what the review threshold and the fraud rule act on, and because agent feedback only carries a category label, so only the category model can learn from it. The sub-intent is shown restricted to the predicted category so the two never contradict each other.
 
+**One forward pass.** Turning text into numbers is about 95% of the work, and the category and topic models used to do it separately on almost identical vocabularies. Both heads are now trained on one shared feature step, saved together in `model.joblib`, so each message is converted once. That made every path about 1.7× faster on one core with the same category decisions as before (the topic head differs on 1 test message in 3,192). Older model versions still load and run the two-pass way.
+
+**Corrections are kept in a file, not only in the database.** `data/feedback/corrections.csv` holds accepted agent corrections permanently, so resetting or reseeding the ticket database never silently changes what the model learns from.
+
 **Model selection on cross-validation, not the test set.** Choosing by test score leaks the test set into model selection and overstates real performance.
 
 **A quality gate before production.** A new version is promoted only if it clears fixed thresholds (macro F1, fraud recall, topic accuracy) and does not regress more than 1 point against the current production model. CI fails if the gate fails.
@@ -61,4 +65,6 @@ flowchart LR
 - The rate limiter is in-process; with several replicas, move it to Redis.
 - The container runs one uvicorn worker: with SQLite, several workers race to create tables on startup. Scale by running more containers against Postgres.
 - SQLite is fine for a demo and a single instance. For production set `BANKQ_DATABASE_URL` to Postgres (TASKS.md #4 adds migrations).
-- Inference is about 1 ms per message on a laptop CPU. The explanation step re-scores the message once per word, so batch endpoints skip it.
+- Bulk files: about 13,000 messages per second per core and one million in 19.3 s on an 8-core laptop (see README). For more, split the file and run `python -m bankq.bulk` on several machines; each part is independent.
+- The bulk jobs queue is in-process and runs one job at a time. With several API servers, move it to a shared queue (Celery or RQ with Redis) and keep the files in object storage; the bulk engine stays the same.
+- The explanation step re-scores a message once per word, so only the single-message endpoint uses it.

@@ -53,7 +53,7 @@ On the held-out test set of 3,192 queries, which is never used for model selecti
 | Category accuracy | **97.3%** |
 | Macro F1 | **0.974** |
 | Fraud recall | **95.8%** |
-| Topic accuracy, 83 topics | **90.0%** (96.7% within the top 3) |
+| Topic accuracy, 83 topics | **89.9%** (96.7% within the top 3) |
 | Majority-class baseline | 46.4% accuracy |
 
 | Model family (tuned) | CV macro F1 | Test macro F1 |
@@ -88,7 +88,9 @@ The response (abridged) shows the masked text, and the rule that caught what the
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/v1/classify` | Route one message; creates a ticket unless `create_ticket: false` |
-| POST | `/api/v1/classify/batch` | Up to 1,000 messages; optional ticket creation |
+| POST | `/api/v1/classify/batch` | Up to 1,000 messages, answered instantly; optional ticket creation |
+| POST | `/api/v1/jobs` | Upload a file of any size; returns a job to poll |
+| GET | `/api/v1/jobs/{id}`, `/preview`, `/result` | Job progress, first rows, routed CSV download |
 | POST | `/api/v1/classify/csv` | CSV upload with a `text` column |
 | GET | `/api/v1/tickets` | Queue: filter by team, status, priority, category, review, search |
 | GET / PATCH | `/api/v1/tickets/{ref}` | Ticket with history; change status, re-route, assign, add a note |
@@ -97,6 +99,28 @@ The response (abridged) shows the masked text, and the rule that caught what the
 | POST | `/api/v1/admin/reload-model` | Hot-swap to the production model and reload the rules |
 | GET | `/health`, `/ready`, `/metrics` | Liveness, readiness, Prometheus |
 
+## Bulk routing: millions of messages
+
+Large files are streamed from disk in chunks, so file size is limited by disk, not memory. Each chunk goes through **one forward pass**: every message is turned into numbers once, and both the category head and the topic head score that same matrix. The business rules are then applied as array operations over the whole chunk, and chunks are spread across all CPU cores.
+
+```bash
+make bulk-demo                                    # writes data/bulk/demo_1m.csv (1,000,000 real test sentences)
+python -m bankq.bulk data/bulk/demo_1m.csv -o routed.csv
+```
+
+Or upload the file on the **Batch** screen (or `POST /api/v1/jobs`) and watch the progress bar.
+
+Measured on a Mac laptop with an Apple M2 chip (4 performance + 4 efficiency cores, 8 GB RAM), including masking and all rules:
+
+| | Messages per second | 1,000,000 messages |
+|---|---|---|
+| Before (text converted separately for each model, 1 core) | 7,367 | about 2 min 16 s |
+| One forward pass, 1 core | 13,120 | about 76 s |
+| One forward pass, 4 cores | 44,259 | 22.6 s |
+| One forward pass, 8 cores | 51,799 | **19.3 s** |
+
+The bulk engine makes exactly the same decisions as the per-message router (`tests/test_bulk.py` checks every field on real messages), and the output is byte-identical whatever the number of cores. Each worker uses about 400 MB of memory.
+
 ## Configuration
 
 All  settings are `BANKQ_*` environment variables (see `.env.example`). The important ones:
@@ -104,6 +128,7 @@ All  settings are `BANKQ_*` environment variables (see `.env.example`). The impo
 - `BANKQ_API_KEYS`: comma-separated keys. When set, every `/api/v1` call needs an `X-API-Key` header, and the UI asks for one. **When empty, auth is off. Only run like that locally.**
 - `BANKQ_DATABASE_URL`: SQLite by default; any SQLAlchemy URL, e.g. Postgres.
 - `BANKQ_RATE_LIMIT_PER_MINUTE`, `BANKQ_MAX_BATCH_SIZE`, `BANKQ_LOG_JSON`.
+- `BANKQ_BULK_WORKERS` (0 = one per CPU core), `BANKQ_BULK_CHUNK_SIZE` (default 20,000), `BANKQ_MAX_UPLOAD_MB` (default 1,024).
 
 ## Model lifecycle
 
