@@ -181,6 +181,26 @@
           <p class="error" id="batch-error" role="alert" hidden></p>
         </div>
       </div>
+      <div class="card job" id="job" hidden aria-live="polite">
+        <div class="job-head">
+          <div><div class="job-name" id="job-name"></div><div class="hint" id="job-stage"></div></div>
+          <a class="btn btn-primary" id="job-download" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg>Download results</a>
+        </div>
+        <div class="job-bar"><span id="job-bar"></span></div>
+        <div class="job-stats" id="job-stats" hidden></div>
+        <div id="job-split-wrap" hidden>
+          <div class="split" id="job-split"></div>
+          <div class="legend" id="job-legend"></div>
+        </div>
+        <div id="job-preview" hidden>
+          <div class="section-head"><h2>First 50 results</h2><span class="hint">The full file has every message</span></div>
+          <div class="card table-card"><table>
+            <thead><tr><th>Message (masked)</th><th>Category</th><th>Topic</th><th>Team</th><th class="num">Confidence</th></tr></thead>
+            <tbody id="job-rows"></tbody>
+          </table></div>
+        </div>
+      </div>
       <div id="batch-results" hidden>
         <div class="section-head">
           <h2 id="batch-title"></h2>
