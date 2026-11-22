@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     raw_data_dir: Path = ROOT / "data" / "raw"
     processed_data_dir: Path = ROOT / "data" / "processed"
     reports_dir: Path = ROOT / "reports"
+    feedback_path: Path = ROOT / "data" / "feedback" / "corrections.csv"
 
     # Comma-separated keys. Empty means auth is off (local development only).
     api_keys: str = ""
