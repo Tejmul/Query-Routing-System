@@ -338,7 +338,7 @@ These were all checked on the live system.
 
 - **Live routing.** As you type a message, it is classified straight away. An animated diagram shows lines running from the message's words to the 5 teams, so you can see what pushed the decision. One click then creates the ticket.
 - **Inbox.** The agents' work list, sorted by urgency and deadline. Agents can change a ticket's status, move it to another team, assign it to someone and add notes. Every change is recorded in a full history.
-- **Batch routing.** Paste many messages, or upload a CSV file (a simple spreadsheet file) with up to 1,000 messages, and download the results.
+- **Batch routing.** Paste up to 1,000 messages for instant results, or upload a CSV file (a simple spreadsheet file) of any size. Big files run in the background with a progress bar: on a normal laptop, one million messages are sorted in about 20 seconds, and you download the results as a file.
 - **Analytics.** Charts of tickets per day, open work per team, deadlines missed, how often agents corrected the model, and how sure the model was.
 - **Model report.** The scores, the model comparison, the list of versions and the release check results.
 
