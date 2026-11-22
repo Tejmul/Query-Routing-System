@@ -419,6 +419,25 @@ tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transpa
 .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 td.low { color: var(--text-3); }
 
+/* ===== Bulk job ===== */
+.job { margin-top: 16px; padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.job > * { min-width: 0; }
+.job .hint { overflow-wrap: anywhere; }
+.job-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.job-name { font-weight: 600; font-size: 15px; word-break: break-all; }
+.job-head .btn { text-decoration: none; }
+.job-bar { height: 8px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+.job-bar span { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--brand); transition: width .4s ease; }
+.job.done .job-bar span { background: var(--ok); }
+.job.failed .job-bar span { background: var(--danger); }
+.job-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.job-stat { padding: 12px 14px; border-radius: var(--r); background: var(--surface-2); }
+.job-stat b { display: block; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.job-stat span { font-size: 12px; color: var(--text-3); }
+#job-split-wrap .split { margin-bottom: 10px; }
+#job-preview .section-head { margin-top: 4px; }
+@media (max-width: 860px) { .job-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* ===== Analytics ===== */
 .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
 .kpi { padding: 16px; }

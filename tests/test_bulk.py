@@ -1,5 +1,7 @@
 """Bulk routing must make exactly the same decisions as the per-message router, at any scale."""
 
+import time
+
 import pandas as pd
 import pytest
 
@@ -88,3 +90,35 @@ def test_parallel_workers_give_identical_output(tmp_path):
     bulk.run(src, tmp_path / "one.csv", workers=1, chunk_size=300)
     bulk.run(src, tmp_path / "two.csv", workers=2, chunk_size=300)
     assert (tmp_path / "one.csv").read_bytes() == (tmp_path / "two.csv").read_bytes()
+
+
+def _wait(client, job_id, timeout=60):
+    end = time.time() + timeout
+    while time.time() < end:
+        job = client.get(f"/api/v1/jobs/{job_id}").json()
+        if job["status"] in ("done", "failed"):
+            return job
+        time.sleep(0.2)
+    raise AssertionError("job did not finish")
+
+
+def test_jobs_api_end_to_end(client):
+    messages = ["my card was stolen", "loan interest rate"] * 600
+    csv_bytes = ("id,text\n" + "".join(f"{i},{t}\n" for i, t in enumerate(messages))).encode()
+    r = client.post("/api/v1/jobs", files={"file": ("big.csv", csv_bytes, "text/csv")})
+    assert r.status_code == 202
+    job = _wait(client, r.json()["id"])
+    assert job["status"] == "done" and job["processed"] == 1200 and job["progress"] == 1.0
+    assert job["summary"]["categories"]["fraud"] == 600 and job["summary"]["categories"]["loans"] == 600
+    prev = client.get(f"/api/v1/jobs/{job['id']}/preview", params={"limit": 5}).json()
+    assert len(prev["rows"]) == 5 and prev["rows"][0]["category"] == "fraud"
+    res = client.get(f"/api/v1/jobs/{job['id']}/result")
+    assert res.status_code == 200 and res.text.count("\n") == 1201
+    assert any(j["id"] == job["id"] for j in client.get("/api/v1/jobs").json()["jobs"])
+
+
+def test_jobs_api_rejects_bad_files(client):
+    r = client.post("/api/v1/jobs", files={"file": ("x.csv", b"body\nhello\n", "text/csv")})
+    assert r.status_code == 422 and "No text column" in r.json()["detail"]
+    assert client.post("/api/v1/jobs", files={"file": ("e.csv", b"", "text/csv")}).status_code == 422
+    assert client.get("/api/v1/jobs/nope").status_code == 404

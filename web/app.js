@@ -756,7 +756,15 @@ let batchResults = [];
 let batchFilter = "all";
 let batchFile = null;
 
-function setFile(f) { batchFile = f || null; $("drop-file").textContent = batchFile ? batchFile.name : ""; }
+function setFile(f) {
+  batchFile = f || null;
+  $("drop-file").textContent = batchFile ? `${batchFile.name} · ${fmtBytes(batchFile.size)}` : "";
+  // Files run as a bulk job (results file, no tickets); pasted text keeps the instant path.
+  $("batch-tickets").disabled = !!batchFile;
+  $("batch-tickets-wrap").style.opacity = batchFile ? 0.45 : 1;
+  $("batch-file-hint").hidden = !batchFile;
+}
+const fmtBytes = (n) => (n < 1e6 ? `${Math.max(1, Math.round(n / 1e3))} KB` : `${(n / 1e6).toFixed(1)} MB`);
 $("batch-file").addEventListener("change", (e) => setFile(e.target.files[0]));
 const drop = $("drop");
 ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
@@ -779,19 +787,13 @@ $("batch-btn").addEventListener("click", async () => {
   showError($("batch-error"), null);
   const lines = $("batch-text").value.split("\n").map((l) => l.trim()).filter(Boolean);
   if (!batchFile && !lines.length) { showError($("batch-error"), "Add some messages or upload a CSV first."); return; }
+  if (batchFile) { runJob(batchFile); return; }
   const createTickets = $("batch-tickets").checked;
   btn.disabled = true;
   btn.textContent = "Routing…";
   try {
-    let data;
-    if (batchFile) {
-      const form = new FormData();
-      form.append("file", batchFile);
-      form.append("create_tickets", createTickets);
-      data = await api("/api/v1/classify/csv", { method: "POST", body: form });
-    } else {
-      data = await send("/api/v1/classify/batch", "POST", { texts: lines, create_tickets: createTickets });
-    }
+    $("job").hidden = true;
+    const data = await send("/api/v1/classify/batch", "POST", { texts: lines, create_tickets: createTickets });
     batchResults = data.results;
     batchFilter = "all";
     renderBatch(data.summary, createTickets);
@@ -844,6 +846,130 @@ $("batch-download").addEventListener("click", () => {
   Object.assign(document.createElement("a"), { href: url, download: "routed_queries.csv" }).click();
   URL.revokeObjectURL(url);
 });
+
+/* ---------- Bulk jobs (files of any size) ---------- */
+let jobTimer = null;
+
+function uploadFile(file) {
+  // XMLHttpRequest, because fetch cannot report upload progress for big files.
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/v1/jobs");
+    const key = store.get(KEY_STORE);
+    if (key) xhr.setRequestHeader("X-API-Key", key);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) setJobStage(`Uploading ${pct(e.loaded / e.total)}`, (e.loaded / e.total) * 0.1); };
+    xhr.onload = () => {
+      let body = {};
+      try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+      if (xhr.status === 401) $("keybar").hidden = false;
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+      else reject(new Error((typeof body.detail === "string" && body.detail) || `Upload failed (${xhr.status}).`));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed: the server could not be reached."));
+    const form = new FormData();
+    form.append("file", file);
+    xhr.send(form);
+  });
+}
+
+function setJobStage(text, fraction) {
+  $("job-stage").textContent = text;
+  $("job-bar").style.width = `${Math.min(100, Math.max(0, fraction * 100))}%`;
+}
+
+async function runJob(file) {
+  const btn = $("batch-btn");
+  clearTimeout(jobTimer);
+  $("batch-results").hidden = true;
+  const panel = $("job");
+  panel.hidden = false;
+  panel.className = "card job";
+  $("job-name").textContent = file.name;
+  ["job-stats", "job-split-wrap", "job-preview", "job-download"].forEach((id) => { $(id).hidden = true; });
+  btn.disabled = true;
+  btn.textContent = "Uploading…";
+  setJobStage("Uploading 0%", 0);
+  try {
+    const job = await uploadFile(file);
+    btn.textContent = "Routing…";
+    pollJob(job.id);
+  } catch (err) {
+    panel.classList.add("failed");
+    setJobStage(err.message, 1);
+    btn.disabled = false;
+    btn.textContent = "Route all";
+  }
+}
+
+async function pollJob(id) {
+  try {
+    const job = await api(`/api/v1/jobs/${id}`);
+    const s = job.summary || {};
+    if (job.status === "queued") setJobStage("Waiting for the previous job to finish…", 0.1);
+    if (job.status === "running" && !job.processed) setJobStage("Starting up: loading the model on every CPU core…", 0.1);
+    if (job.status === "running" && job.processed) {
+      setJobStage(`Routing ${fmtNum(job.processed)} of ${fmtNum(job.total)} · ${fmtNum(s.rows_per_second || 0)} messages/s`,
+        0.1 + 0.9 * job.progress);
+    }
+    if (job.status === "done") return finishJob(job);
+    if (job.status === "failed") throw new Error(job.error || "The job failed.");
+    jobTimer = setTimeout(() => pollJob(id), 500);
+  } catch (err) {
+    $("job").classList.add("failed");
+    setJobStage(err.message, 1);
+    $("batch-btn").disabled = false;
+    $("batch-btn").textContent = "Route all";
+  }
+}
+
+async function finishJob(job) {
+  const s = job.summary;
+  $("job").classList.add("done");
+  setJobStage(`Done: ${fmtNum(s.routed)} messages routed in ${s.seconds}s · model ${job.model_version}`, 1);
+  $("batch-btn").disabled = false;
+  $("batch-btn").textContent = "Route all";
+
+  const stat = (v, l) => `<div class="job-stat"><b>${v}</b><span>${l}</span></div>`;
+  $("job-stats").innerHTML = stat(fmtNum(s.routed), "messages routed")
+    + stat(fmtNum(s.rows_per_second), "messages per second")
+    + stat(`${s.seconds}s`, `total time · ${s.workers} CPU cores`)
+    + stat(fmtNum(s.urgent), "urgent (fraud)")
+    + stat(fmtNum(s.needs_review), "sent to manual review");
+  $("job-stats").hidden = false;
+
+  const total = Math.max(1, s.routed);
+  $("job-split").innerHTML = ORDER.filter((c) => s.categories[c])
+    .map((c) => `<div class="split-seg c-${c}" style="flex:${s.categories[c]}" title="${esc(catLabel(c))}: ${fmtNum(s.categories[c])}"></div>`).join("");
+  $("job-legend").innerHTML = ORDER.map((c) => `<span class="c-${c}"><i></i>${esc(catLabel(c))} ${fmtNum(s.categories[c] || 0)} · ${pct(s.categories[c] / total, 1)}</span>`).join("");
+  $("job-split-wrap").hidden = false;
+
+  const dl = $("job-download");
+  dl.hidden = false;
+  dl.onclick = async (e) => {
+    const key = store.get(KEY_STORE);
+    if (!key) return;  // no auth: let the plain link stream the file
+    e.preventDefault();  // with an API key the header is needed, so fetch it as a blob
+    const res = await fetch(`/api/v1/jobs/${job.id}/result`, { headers: { "X-API-Key": key } });
+    const url = URL.createObjectURL(await res.blob());
+    Object.assign(document.createElement("a"), { href: url, download: `routed_${job.filename.replace(/\.[^.]+$/, "")}.csv` }).click();
+    URL.revokeObjectURL(url);
+  };
+  dl.href = `/api/v1/jobs/${job.id}/result`;
+
+  try {
+    const prev = await api(`/api/v1/jobs/${job.id}/preview?limit=50`);
+    $("job-rows").innerHTML = prev.rows.map((r) => {
+      const review = r.needs_review === "True";
+      const cat = review ? "review" : r.category;
+      return `<tr><td>${esc(r.text_masked)}</td>
+        <td><span class="tag c-${cat}">${esc(review ? `${catLabel(r.category)}?` : catLabel(r.category))}</span></td>
+        <td>${esc(r.topic)}</td>
+        <td>${esc(r.department)} ${r.priority === "urgent" ? prioBadge("urgent") : ""}</td>
+        <td class="num ${review ? "low" : ""}">${pct(Number(r.confidence), 1)}</td></tr>`;
+    }).join("");
+    $("job-preview").hidden = false;
+  } catch { /* preview is optional */ }
+}
 
 /* ---------- Charts ---------- */
 const tip = $("tooltip");
