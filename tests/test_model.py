@@ -43,3 +43,10 @@ def test_sub_intent_belongs_to_predicted_category(predictor):
     r = predictor.predict("my card got stuck in the ATM", explain=False)
     assert r["category"] == "cards"
     assert r["intents"][0]["intent"] == "card_swallowed"
+
+
+def test_one_forward_pass_matches_separate_pipelines(predictor):
+    texts = ["my card hasn't arrived", "I didn't make this payment", "loan interest rate"]
+    cat, intent = predictor.score(texts)
+    assert (abs(cat - predictor.category_model.predict_proba(texts)) < 1e-12).all()
+    assert (abs(intent - predictor.intent_model.predict_proba(texts)) < 1e-12).all()

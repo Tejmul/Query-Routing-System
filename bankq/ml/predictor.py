@@ -17,8 +17,21 @@ class Predictor:
         self.card = bundle["card"]
         self.category_model = bundle["category"]
         self.intent_model = bundle["intent"]
+        self.shared_features = bundle.get("shared_features", False)
         self.categories = list(self.category_model.classes_)
         self.intents = list(self.intent_model.classes_)
+
+    def score(self, texts):
+        """Category and sub-intent probabilities for many texts.
+
+        With shared features (current model format) each text is turned into numbers once and both
+        heads score that matrix: one forward pass. Older versions fall back to two pipelines.
+        """
+        if self.shared_features:
+            X = self.category_model.named_steps["features"].transform(texts)
+            return (self.category_model.named_steps["clf"].predict_proba(X),
+                    self.intent_model.named_steps["clf"].predict_proba(X))
+        return self.category_model.predict_proba(texts), self.intent_model.predict_proba(texts)
 
     @property
     def model_name(self):
@@ -48,10 +61,11 @@ class Predictor:
         return self._intents(self.intent_model.predict_proba([text])[0], category, k)
 
     def predict(self, text, explain=True):
-        cat_probs = self.category_model.predict_proba([text])[0]
+        cat, intent = self.score([text])
+        cat_probs = cat[0]
         idx = int(np.argmax(cat_probs))
         category = self.categories[idx]
-        intents = self._intents(self.intent_model.predict_proba([text])[0], category)
+        intents = self._intents(intent[0], category)
         return {
             "category": category,
             "confidence": float(cat_probs[idx]),
@@ -61,8 +75,7 @@ class Predictor:
         }
 
     def predict_many(self, texts):
-        cat = self.category_model.predict_proba(texts)
-        intent = self.intent_model.predict_proba(texts)
+        cat, intent = self.score(texts)
         out = []
         for cp, ip in zip(cat, intent):
             idx = int(np.argmax(cp))
