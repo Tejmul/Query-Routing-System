@@ -12,10 +12,12 @@ Input: a CSV with a header (column `text`, `query` or `message`, or name it with
 `id` column is copied through), or a .txt file with one message per line.
 """
 
+import argparse
 import csv
 import logging
 import multiprocessing as mp
 import os
+import sys
 import time
 from collections import Counter, deque
 from concurrent.futures import ProcessPoolExecutor
@@ -292,3 +294,34 @@ def _finish(summary, counts, rules, start, workers):
     return {**summary, "categories": {c: counts.get(c, 0) for c in CATEGORIES}, "rules": dict(rules),
             "seconds": round(seconds, 2), "rows_per_second": round(summary["rows"] / seconds) if seconds else None,
             "workers": workers}
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Route a large file of customer messages.")
+    ap.add_argument("input", help="CSV with a text/query/message column, or a .txt file (one message per line)")
+    ap.add_argument("-o", "--output", required=True, help="output CSV")
+    ap.add_argument("--workers", type=int, default=None, help="processes to use (default: all CPU cores)")
+    ap.add_argument("--chunk-size", type=int, default=None, help="messages per chunk (default 20000)")
+    ap.add_argument("--text-column", default=None)
+    ap.add_argument("--model-version", default=None, help="model version to use (default: production)")
+    args = ap.parse_args()
+    logging.disable(logging.INFO)
+
+    total = count_rows(args.input)
+    print(f"Routing {total:,} messages from {args.input} ...", file=sys.stderr)
+
+    def progress(done, s):
+        pct = 100 * done / total if total else 100
+        print(f"\r  {done:,} / {total:,} ({pct:.0f}%)  {s['rows_per_second'] or 0:,} msg/s", end="", file=sys.stderr)
+
+    s = run(args.input, args.output, args.workers, args.chunk_size, args.text_column, progress, args.model_version, total)
+    print(f"\nDone: {s['routed']:,} routed in {s['seconds']}s ({s['rows_per_second']:,} msg/s, "
+          f"{s['workers']} workers) -> {args.output}", file=sys.stderr)
+    for c, k in s["categories"].items():
+        print(f"  {CATEGORIES[c]['label']:<15} {k:>10,}", file=sys.stderr)
+    print(f"  urgent {s['urgent']:,} · manual review {s['needs_review']:,} · skipped empty {s['skipped_empty']:,}",
+          file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()
