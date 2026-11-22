@@ -158,7 +158,7 @@
     <!-- BATCH -->
     <section class="panel" id="panel-batch" role="tabpanel" aria-labelledby="tab-batch" hidden>
       <header class="page-head">
-        <div><h1>Batch routing</h1><p>Route a backlog in one go: paste messages or upload a CSV.</p></div>
+        <div><h1>Batch routing</h1><p>Paste up to 1,000 messages for instant results, or upload a file of any size: millions of messages run as a background job.</p></div>
       </header>
       <div class="card batch-input">
         <div class="batch-text">
@@ -169,11 +169,12 @@
           <label class="drop" id="drop" for="batch-file">
             <input type="file" id="batch-file" accept=".csv,.txt">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
-            <span class="drop-title">Upload CSV</span>
-            <span>A <code>text</code> column, or one message per line. Up to 1,000 rows.</span>
+            <span class="drop-title">Upload a file of any size</span>
+            <span>CSV with a <code>text</code> column (an <code>id</code> column is kept), or .txt with one message per line.</span>
             <span class="drop-file mono" id="drop-file"></span>
           </label>
-          <label class="check"><input type="checkbox" id="batch-tickets"> Create a ticket for each message</label>
+          <label class="check" id="batch-tickets-wrap"><input type="checkbox" id="batch-tickets"> Create a ticket for each message</label>
+          <p class="hint" id="batch-file-hint" hidden>Files run as a bulk job and produce a results file to download, not tickets.</p>
           <div class="row-end">
             <button class="btn btn-ghost" type="button" id="batch-sample">Load examples</button>
             <button class="btn btn-primary" type="button" id="batch-btn">Route all</button>

@@ -756,7 +756,15 @@ let batchResults = [];
 let batchFilter = "all";
 let batchFile = null;
 
-function setFile(f) { batchFile = f || null; $("drop-file").textContent = batchFile ? batchFile.name : ""; }
+function setFile(f) {
+  batchFile = f || null;
+  $("drop-file").textContent = batchFile ? `${batchFile.name} · ${fmtBytes(batchFile.size)}` : "";
+  // Files run as a bulk job (results file, no tickets); pasted text keeps the instant path.
+  $("batch-tickets").disabled = !!batchFile;
+  $("batch-tickets-wrap").style.opacity = batchFile ? 0.45 : 1;
+  $("batch-file-hint").hidden = !batchFile;
+}
+const fmtBytes = (n) => (n < 1e6 ? `${Math.max(1, Math.round(n / 1e3))} KB` : `${(n / 1e6).toFixed(1)} MB`);
 $("batch-file").addEventListener("change", (e) => setFile(e.target.files[0]));
 const drop = $("drop");
 ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
@@ -779,19 +787,13 @@ $("batch-btn").addEventListener("click", async () => {
   showError($("batch-error"), null);
   const lines = $("batch-text").value.split("\n").map((l) => l.trim()).filter(Boolean);
   if (!batchFile && !lines.length) { showError($("batch-error"), "Add some messages or upload a CSV first."); return; }
+  if (batchFile) { runJob(batchFile); return; }
   const createTickets = $("batch-tickets").checked;
   btn.disabled = true;
   btn.textContent = "Routing…";
   try {
-    let data;
-    if (batchFile) {
-      const form = new FormData();
-      form.append("file", batchFile);
-      form.append("create_tickets", createTickets);
-      data = await api("/api/v1/classify/csv", { method: "POST", body: form });
-    } else {
-      data = await send("/api/v1/classify/batch", "POST", { texts: lines, create_tickets: createTickets });
-    }
+    $("job").hidden = true;
+    const data = await send("/api/v1/classify/batch", "POST", { texts: lines, create_tickets: createTickets });
     batchResults = data.results;
     batchFilter = "all";
     renderBatch(data.summary, createTickets);
