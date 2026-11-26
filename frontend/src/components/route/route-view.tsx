@@ -36,8 +36,14 @@ export function RouteView() {
   const seq = useRef(0);
 
   const classify = useCallback(async (value: string) => {
-    if (value.trim().length < 3) { setDecision(null); setState({ kind: "idle" }); return; }
     ctrl.current?.abort();
+    if (value.trim().length < 3) {
+      // Invalidate any reply still in flight so it can't bring back a decision for old text.
+      seq.current++;
+      setDecision(null);
+      setState({ kind: "idle" });
+      return;
+    }
     ctrl.current = new AbortController();
     const mine = ++seq.current;
     setState({ kind: "busy" });
