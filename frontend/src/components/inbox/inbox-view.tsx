@@ -5,14 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { Panel, PageHead } from "@/components/page-head";
 import { api, send } from "@/lib/api";
+import { ruleName } from "@/lib/labels";
 import { capital, clock, dueText, pct, relTime, topicLabel } from "@/lib/format";
 import { ORDER, type Ticket } from "@/lib/types";
 
 const STATUS_LABEL = { open: "Open", in_progress: "In progress", resolved: "Resolved" } as const;
-const RULE_NAMES: Record<string, string> = {
-  fraud_escalation: "Fraud escalation", low_confidence: "Manual review", vulnerable_customer: "Vulnerable customer",
-  formal_complaint: "Formal complaint", account_takeover: "Account takeover",
-};
 
 export function InboxView() {
   const { taxonomy, label, refreshBadge, toast } = useApp();
@@ -226,7 +223,7 @@ function TicketDetail({ t, label, depts, onPatch }: {
           {t.rules_applied.map((r) => (
             <li key={r.rule} className="flex gap-2 rounded-lg bg-surface-2 px-3 py-2 text-xs text-ink-2"
               style={{ boxShadow: `inset 3px 0 0 ${r.rule === "low_confidence" ? "var(--review)" : "var(--fraud)"}` }}>
-              <b className="whitespace-nowrap text-ink">{RULE_NAMES[r.rule] ?? r.rule}</b>{r.detail}
+              <b className="whitespace-nowrap text-ink">{ruleName(r.rule)}</b>{r.detail}
             </li>
           ))}
         </ul>

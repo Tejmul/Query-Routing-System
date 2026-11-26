@@ -6,6 +6,7 @@ import { useApp } from "@/components/app-provider";
 import { Panel } from "@/components/page-head";
 import { AnimatedNumber } from "@/components/animated-number";
 import { api, send } from "@/lib/api";
+import { ruleName } from "@/lib/labels";
 import { capital, clock, pct, pctSoft, slaText } from "@/lib/format";
 import type { Category, Decision } from "@/lib/types";
 import { evidence, NeuralNet } from "./neural-net";
@@ -18,10 +19,6 @@ const SAMPLES = [
   "My father passed away, close his account",
   "Card 4539 1488 0343 6467 is blocked",
 ];
-const RULE_NAMES: Record<string, string> = {
-  fraud_escalation: "Fraud escalation", low_confidence: "Manual review", vulnerable_customer: "Vulnerable customer",
-  formal_complaint: "Formal complaint", account_takeover: "Account takeover",
-};
 const PII_NAMES: Record<string, string> = { CARD: "card number", ACCOUNT: "account number", IBAN: "IBAN", SORT_CODE: "sort code", EMAIL: "email", PHONE: "phone" };
 const CHANNELS = [["app", "Mobile app"], ["web", "Web"], ["chat", "Live chat"], ["email", "Email"], ["phone", "Phone"], ["branch", "Branch"]];
 
@@ -85,7 +82,7 @@ export function RouteView() {
     { key: "pii", title: "Mask", text: decision.pii_redacted.length ? `${decision.pii_redacted.length} item${decision.pii_redacted.length > 1 ? "s" : ""} masked` : "Nothing to mask", flag: false },
     { key: "cat", title: "Classify", text: `${label(decision.model_category)} · ${pct(decision.probabilities[decision.model_category])}`, flag: false },
     { key: "topic", title: "Topic", text: decision.intent?.label ?? "Not found", flag: false },
-    { key: "rules", title: "Rules", text: decision.rules_applied.length ? decision.rules_applied.map((r) => RULE_NAMES[r.rule] ?? r.rule).join(", ") : "None triggered",
+    { key: "rules", title: "Rules", text: decision.rules_applied.length ? decision.rules_applied.map((r) => ruleName(r.rule)).join(", ") : "None triggered",
       flag: decision.rules_applied.some((r) => r.rule !== "low_confidence") },
   ] : [
     { key: "pii", title: "Mask", text: "personal data", flag: false },
@@ -252,7 +249,7 @@ function DecisionCards({ d, label, reviewDept }: { d: Decision; label: (c: strin
           {d.rules_applied.map((r) => (
             <li key={r.rule} className="flex gap-2 rounded-lg bg-surface-2 px-2.5 py-2 text-xs text-ink-2"
               style={{ boxShadow: `inset 3px 0 0 ${r.rule === "low_confidence" ? "var(--review)" : "var(--fraud)"}` }}>
-              <b className="whitespace-nowrap text-ink">{RULE_NAMES[r.rule] ?? r.rule}</b>{r.detail}
+              <b className="whitespace-nowrap text-ink">{ruleName(r.rule)}</b>{r.detail}
             </li>
           ))}
         </ul>
