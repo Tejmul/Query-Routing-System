@@ -32,6 +32,7 @@ export function RouteView() {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [state, setState] = useState<{ kind: "idle" | "busy" | "live" | "saved" | "error"; msg?: string }>({ kind: "idle" });
   const [created, setCreated] = useState(false);
+  const [creating, setCreating] = useState(false);
   const ctrl = useRef<AbortController | null>(null);
   const seq = useRef(0);
 
@@ -64,6 +65,8 @@ export function RouteView() {
   }, [text, classify]);
 
   async function createTicket() {
+    if (creating || created) return;
+    setCreating(true);
     try {
       const d = await send<Decision>("/api/v1/classify", "POST", { text, channel });
       setDecision(d);
@@ -73,6 +76,8 @@ export function RouteView() {
       toast(`${d.ticket_ref} created for ${d.department}`, { label: "Open", href: `/inbox?ticket=${d.ticket_ref}` });
     } catch (err) {
       setState({ kind: "error", msg: (err as Error).message });
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -117,7 +122,7 @@ export function RouteView() {
             <select aria-label="Channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="input h-10 cursor-pointer px-2.5">
               {CHANNELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
-            <button type="button" onClick={createTicket} disabled={!decision || created} className="btn btn-primary h-10 flex-1">
+            <button type="button" onClick={createTicket} disabled={!decision || created || creating} className="btn btn-primary h-10 flex-1">
               {created ? (
                 <><svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>Ticket created</>
               ) : (
