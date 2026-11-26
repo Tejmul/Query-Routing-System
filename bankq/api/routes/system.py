@@ -1,9 +1,12 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 
 from ... import __version__
+from ...config import get_settings
 from ...db.repository import TicketRepository
 from ...db.session import get_engine
 from ...ml.registry import ModelRegistry
@@ -47,6 +50,14 @@ def model_card(router_=Depends(get_router)):
 @router.get("/api/v1/model/versions", tags=["model"])
 def model_versions():
     return {"versions": ModelRegistry().versions()}
+
+
+@router.get("/api/v1/model/challengers", tags=["model"],
+            summary="Challenger models compared with production on the same test set (not used for routing)")
+def model_challengers(router_=Depends(get_router)):
+    folder = get_settings().reports_dir / "challengers"
+    items = [json.loads(p.read_text()) for p in sorted(folder.glob("*.json"))] if folder.exists() else []
+    return {"routing_model": router_.model_version, "challengers": items}
 
 
 @router.get("/api/v1/model/figures/{name}", tags=["model"], include_in_schema=False)
