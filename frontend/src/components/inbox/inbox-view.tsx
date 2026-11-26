@@ -44,7 +44,7 @@ export function InboxView() {
   useEffect(() => {
     let current = true;
     fetchPage(1)
-      .then((r) => { if (current) { setTotal(r.total); setItems(r.items); setPage(1); } })
+      .then((r) => { if (current) { setError(""); setTotal(r.total); setItems(r.items); setPage(1); } })
       .catch((err) => current && setError((err as Error).message));
     return () => { current = false; };
   }, [fetchPage]);
