@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Routing Desk IEEE Report</title>
+<style>
+  @page { size: Letter; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+  body {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 10pt;
+    line-height: 1.16;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .header { text-align: center; margin: 0 0 14pt; }
+  .title { font-size: 24pt; line-height: 1.12; font-weight: normal; margin: 0 0 12pt; }
+  .authors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 10pt; font-size: 11pt; margin: 0 0.3in; }
+  .cols {
+    column-count: 2;
+    column-gap: 0.25in;
+    column-fill: balance;
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+  }
+  p { margin: 0; text-indent: 1em; orphans: 2; widows: 2; }
+  p.noindent { text-indent: 0; }
+  .abstract, .keywords { font-size: 9pt; font-weight: bold; line-height: 1.15; text-indent: 1em; margin-bottom: 4pt; }
+  .abstract i, .keywords i { font-weight: bold; }
+  h2 {
+    font-size: 10pt; font-weight: normal; font-variant: small-caps; letter-spacing: 0.02em;
+    text-align: center; margin: 9pt 0 4pt; break-after: avoid;
+  }
+  h3 { font-size: 10pt; font-weight: normal; font-style: italic; text-align: left; margin: 6pt 0 2pt; break-after: avoid; }
+  h2 + h3 { margin-top: 2pt; }
+  ul.contrib, ol.contrib { margin: 2pt 0 2pt 0; padding-left: 1.4em; }
+  ul.contrib li, ol.contrib li { margin: 0 0 1pt; }
+  code, .mono { font-family: "Courier New", Courier, monospace; font-size: 8.6pt; hyphens: none; }
+  figure { margin: 7pt 0 7pt; break-inside: avoid; text-align: center; }
+  figure img { width: 100%; display: block; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 8pt; line-height: 1.15; text-align: justify; margin-top: 4pt; hyphens: auto; }
+  figcaption b { font-weight: normal; }
+  .span { column-span: all; }
+  figure.span { margin: 4pt 0 10pt; }
+  figure.span img { width: 100%; }
+  .tbl { margin: 7pt 0 7pt; break-inside: avoid; }
+  .tcap { font-size: 8pt; text-align: center; font-variant: small-caps; line-height: 1.2; margin-bottom: 3pt; }
+  .tcap .tn { display: block; font-variant: normal; letter-spacing: 0.04em; }
+  table { width: 100%; border-collapse: collapse; font-size: 8pt; line-height: 1.2; text-align: left; hyphens: none; }
+  thead th { border-top: 1pt solid #000; border-bottom: 0.6pt solid #000; padding: 2pt 3pt; font-weight: bold; }
+  tbody td { padding: 1.4pt 3pt; }
+  tbody tr:last-child td { border-bottom: 1pt solid #000; }
+  tr.sum td { border-top: 0.6pt solid #000; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.best td { font-weight: bold; }
+  ol.refs { font-size: 8pt; line-height: 1.18; text-align: justify; list-style: none; padding: 0; margin: 0; }
+  ol.refs li { position: relative; padding-left: 2.1em; margin-bottom: 2pt; }
+  ol.refs li::before { content: "[" attr(data-n) "]"; position: absolute; left: 0; }
+  /* paginated layout (built by the script at the end) */
+  .flow { text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+  .page { width: 7.25in; height: 9.34in; overflow: hidden; break-after: page; display: flex; flex-direction: column; }
+  .page:last-child { break-after: auto; }
+  .page .top { display: flow-root; }
+  .page .top > .header { margin-bottom: 12pt; }
+  .page .top > figure.span { margin: 0 0 10pt; }
+  .page .row { display: flex; gap: 0.25in; align-items: flex-start; }
+  .page .col { width: 3.5in; flex: none; }
+  .page .inner { display: flow-root; }
+  .page .inner > :first-child { margin-top: 0 !important; }
+  .page .inner > :last-child { margin-bottom: 0 !important; }
+  p.first-part { text-align-last: justify; }
+  p.cont { text-indent: 0; }
+  body.paged #src, body.paged > .header { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1 class="title">Routing Desk: Scaling Banking Message Routing<br>from One Thousand to One Million Messages</h1>
+  <div class="authors">
+    <div>Tejmul Movin</div>
+    <div>Samarth Sekhar</div>
+    <div>Meenaksh Singhania</div>
+    <div>Prerak Arya</div>
+  </div>
+</div>
+
+<div id="src" class="cols flow">
+
+<p class="abstract"><i>Abstract</i>&mdash;Banks receive large volumes of free-text customer messages that must reach the right team quickly. We present Routing Desk, a natural language processing system that masks personal data, classifies each message into one of five categories (payments, cards, loans, account issues and fraud), predicts one of 83 sub-intent topics, and routes the message to a team with a priority and a service-level deadline. The production model uses TF-IDF word and character n-gram features with a Logistic Regression classifier (C&nbsp;=&nbsp;20), selected by 5-fold stratified cross-validation over four candidates. On a fixed test set of 3,192 messages it reaches 97.34% accuracy and a macro F1 of 0.9739, and it catches 230 of 240 fraud messages. We then scale the system from a hard limit of 1,000 messages per request to files of 1,000,000 messages and more. A bulk engine streams the file in chunks of 20,000 rows, computes text features once for both model heads, applies the routing rules as vectorised array operations and spreads the chunks over parallel worker processes. On an Apple M2 laptop it routes 51,799 messages per second with 8 workers and one million messages in 19.3 seconds, against about 1.8 hours before. Finally, we integrate Laya, an open-weights decision model, as a switched-off challenger and compare it on time only: 63&nbsp;ms against 2.8&nbsp;ms per message. We explain why the linear model stays in production and where decision models still add value.</p>
+
+<p class="keywords"><i>Index Terms</i>&mdash;text classification, intent detection, TF-IDF, logistic regression, customer support routing, batch inference, scalability, decision models.</p>
+
+<h2>I. Introduction</h2>
+
+<p>Every bank runs a front door for written customer contact: in-app chat, web forms and email. Each message has to be read, understood and passed to the team that can resolve it. A message about a stolen card belongs with the fraud team within the hour; a question about a mortgage can wait for the lending team. When this triage is done by hand, it is slow, inconsistent and expensive, and the most urgent messages wait in the same queue as everything else.</p>
+
+<p>Routing Desk automates this triage. It reads a customer message, masks personal data such as card numbers and phone numbers, classifies the message into one of five categories (payments, cards, loans, account issues and fraud), predicts a more specific topic among 83 sub-intents, and applies a small set of business rules that set a priority and a service-level agreement (SLA) deadline. Messages the model is unsure about are sent to a manual review queue instead of being guessed.</p>
+
+<p>The first phase of the project produced an accurate classifier and a working application, but it was built for one message at a time. Its batch endpoints refused more than 1,000 messages per request, and routing one million messages through the single-message endpoint would have taken about 1.8 hours. This paper describes how the system was rebuilt to route one million messages in 19.3 seconds on a laptop without changing a single routing decision, and how an open-weights decision model, Laya&nbsp;[9], was integrated and measured as a challenger.</p>
+
+<p>The contributions are:</p>
+<ol class="contrib">
+  <li>an end-to-end routing system with personal-data masking, a TF-IDF and Logistic Regression model chosen by cross-validation, a two-tier fraud safety net and an automatic release check before a model reaches production;</li>
+  <li>a bulk engine that streams files of any size, scores each chunk in one forward pass, applies rules as array operations and runs on all CPU cores, proven to make exactly the same decisions as the per-message router;</li>
+  <li>an integration of the Laya decision model as a switched-off challenger, with a time-only comparison and an analysis of where decision models fit;</li>
+  <li>a Next.js user interface that shows each decision and the live flow of a bulk file into the five team queues.</li>
+</ol>
+
+<p>Section&nbsp;II reviews related work and Section&nbsp;III the data. Section&nbsp;IV describes the model and the routing rules, Section&nbsp;V the system, Section&nbsp;VI the bulk engine and Section&nbsp;VII the Laya challenger. Section&nbsp;VIII reports results, Section&nbsp;IX discusses limitations and Section&nbsp;X concludes.</p>
+
+<h2>II. Related Work</h2>
+
+<p><i>Intent detection in banking.</i> Casanueva et&nbsp;al.&nbsp;[1] released Banking77, a public dataset of short, single-turn customer queries in the banking domain labelled with fine-grained intents, and showed that intent detectors built on dual sentence encoders are efficient and accurate. Banking77 is the main source of our training data; we group its intents into the five operational categories used by the teams.</p>
+
+<p><i>Linear text classification.</i> Term weighting with term frequency and inverse document frequency (TF-IDF) is a long-standing representation for text retrieval and classification&nbsp;[2], [11]. Joachims&nbsp;[5] showed that support vector machines handle the many sparse, relevant features of text well, and Rennie et&nbsp;al.&nbsp;[6] corrected the poor assumptions of naive Bayes, giving the Complement Naive Bayes classifier. Logistic Regression and linear SVMs on sparse features are solved efficiently by LIBLINEAR&nbsp;[4]; we use the scikit-learn&nbsp;[3] implementations of all candidates.</p>
+
+<p><i>Pre-trained encoders and decision models.</i> BERT&nbsp;[7] made fine-tuned bidirectional transformer encoders the default for many classification tasks, and ModernBERT&nbsp;[8] updates the design for faster, memory-efficient inference over longer contexts. Laya&nbsp;[9] builds on such an encoder: it is a non-autoregressive decision model that answers typed questions with calibrated probabilities over options instead of generating text. We use it as a challenger in Section&nbsp;VII.</p>
+
+<p><i>Serving.</i> The application programming interface (API) is built with FastAPI&nbsp;[10]. Our focus is not a new classifier but the engineering needed to make a classical, explainable model route very large volumes reliably.</p>
+
+<h2>III. Dataset</h2>
+
+<p>The training data combines three sources (Table&nbsp;II). The Banking77 dataset&nbsp;[1] supplies 9,974 training rows. Banking77 has no loan intents, so 544 loan queries were generated to cover the lending team. One further row comes from an agent correction made in the inbox, which the feedback loop adds to the training data. In total there are 10,519 training rows. The test set has 3,192 rows; it is fixed and never trained on, so every reported score is on unseen messages.</p>
+
+<div class="tbl">
+  <div class="tcap"><span class="tn">TABLE I</span>Categories, Teams, Default Priority and SLA</div>
+  <table>
+    <thead><tr><th>Category</th><th>Team</th><th>Priority</th><th class="n">SLA</th></tr></thead>
+    <tbody>
+      <tr><td>Payments</td><td>Payments &amp; Transfers Desk</td><td>high</td><td class="n">8 h</td></tr>
+      <tr><td>Cards</td><td>Card Services</td><td>normal</td><td class="n">24 h</td></tr>
+      <tr><td>Loans</td><td>Lending Team</td><td>normal</td><td class="n">48 h</td></tr>
+      <tr><td>Account issues</td><td>Account Services</td><td>normal</td><td class="n">24 h</td></tr>
+      <tr><td>Fraud</td><td>Fraud &amp; Security Team</td><td>urgent</td><td class="n">1 h</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>Each message carries one of five categories, mapped to a team, a default priority and an SLA in hours (Table&nbsp;I). Messages with low model confidence go to a sixth destination, &ldquo;General Support (manual review)&rdquo;. Under the five categories sit 83 sub-intents, or topics, such as a compromised card or a pending transfer, which tell the agent what the customer actually needs.</p>
+
+<div class="tbl">
+  <div class="tcap"><span class="tn">TABLE II</span>Training and Test Rows per Category</div>
+  <table>
+    <thead><tr><th>Category</th><th class="n">Train</th><th class="n">Test</th></tr></thead>
+    <tbody>
+      <tr><td>Payments</td><td class="n">5,338</td><td class="n">1,480</td></tr>
+      <tr><td>Cards</td><td class="n">2,701</td><td class="n">959</td></tr>
+      <tr><td>Loans</td><td class="n">544</td><td class="n">113</td></tr>
+      <tr><td>Account issues</td><td class="n">1,137</td><td class="n">400</td></tr>
+      <tr><td>Fraud</td><td class="n">799</td><td class="n">240</td></tr>
+      <tr class="sum"><td>Total</td><td class="n">10,519</td><td class="n">3,192</td></tr>
+      <tr><td colspan="3" style="font-style:italic;padding-top:2pt">Training sources: Banking77 9,974; generated loans 544; agent feedback 1.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<figure>
+  <img src="figures/class_distribution.png" alt="Bar chart of training and test messages per category">
+  <figcaption>Fig.&nbsp;1.&nbsp; Messages per category in the training and test sets. Payments dominate and loans are the smallest class, so models are scored by macro F1, which weights every category equally.</figcaption>
+</figure>
+
+<p>The classes are imbalanced (Fig.&nbsp;1): payments have 5,338 training rows and loans 544. Accuracy alone would reward a model that favours the large classes, so model selection uses macro F1, the unweighted mean of the per-category F1 scores. A majority-class baseline that always answers &ldquo;payments&rdquo; scores 0.4637 accuracy but only 0.1267 macro F1 on the test set (Table&nbsp;V), which shows why.</p>
+
+<h2>IV. Method</h2>
+
+<h3>A. Personal-Data Masking</h3>
+
+<p>Masking runs before anything else, so the model, the database and the logs only ever see masked text. Regular expressions find email addresses, IBANs, sort codes, account numbers and phone numbers. Long digit runs are tested with the Luhn checksum: a run that passes is a card number and becomes <code>[CARD]</code>; otherwise it is classified as a phone or account number. The placeholders stay in the text so that agents can see that something was there, and they act as useful features for the classifier.</p>
+
+<h3>B. Text Features</h3>
+
+<p>Each masked message is turned into a sparse TF-IDF vector&nbsp;[2], [11] that joins word n-grams and character n-grams. Word n-grams capture phrases such as &ldquo;top up&rdquo; or &ldquo;my pin&rdquo;; character n-grams make the representation robust to spelling mistakes, inflections and unseen word forms, which are common in customer messages.</p>
+
+<h3>C. Model Selection</h3>
+
+<p>Four candidates were compared: a majority-class baseline, Complement Naive Bayes&nbsp;[6], a linear SVM&nbsp;[5] and Logistic Regression. Each was tuned by a grid search under 5-fold stratified cross-validation on the training set, scored by macro F1. The winner was chosen on the cross-validation score, not on the test score, because choosing by test score leaks the test set into model selection and overstates real performance. Logistic Regression with C&nbsp;=&nbsp;20 had the highest cross-validation macro F1, 0.9663, just ahead of the linear SVM at 0.9655 (Table&nbsp;V, Fig.&nbsp;9).</p>
+
+<h3>D. Logistic Regression</h3>
+
+<p>Logistic Regression has two properties that matter for routing beyond its accuracy. First, it outputs a probability for every category; the review threshold, the fraud rule and the secondary category all act on these probabilities. Second, it is explainable: each category has a weight per feature, so the strongest indicator words can be listed (e.g. &ldquo;stolen&rdquo; and &ldquo;this charge&rdquo; for fraud, &ldquo;loan&rdquo; and &ldquo;mortgage&rdquo; for loans; Fig.&nbsp;2), and the interface highlights the words that moved a decision most. The model trains in 36&nbsp;s, is stored in a 27.6&nbsp;MB file and loads in 1.6&nbsp;s.</p>
+
+<figure class="span">
+  <img src="figures/top_terms.png" alt="Strongest indicator words per category for the Logistic Regression model">
+  <figcaption>Fig.&nbsp;2.&nbsp; Strongest indicator words and phrases per category in the trained Logistic Regression model, ranked by weight (from the model registry). Character and word n-grams such as &ldquo;my pin&rdquo;, &ldquo;mortgage&rdquo; and &ldquo;stolen&rdquo; make each routing decision explainable to agents.</figcaption>
+</figure>
+
+<h3>E. Topic Head with Shared Features</h3>
+
+<p>A second Logistic Regression head predicts the 83 topics. In the first phase it had its own feature pipeline, so every message was converted to features twice. The two heads now share one feature step and are saved together in one <code>model.joblib</code>: a message is converted once and both heads score the same feature matrix. Category decisions are unchanged (97.34% accuracy, same data fingerprint <code>2025a09cd7997a7e</code>); topic accuracy moved from 89.97% to 89.94%, about one message of 3,192. The topic shown to agents is restricted to the predicted category so that the two never contradict each other.</p>
+
+<h3>F. Routing Rules</h3>
+
+<p>The model optimises average accuracy, but the bank cares disproportionately about fraud. A set of rules, kept in a configuration file that can be edited without retraining, sits on top of the model:</p>
+<ul class="contrib">
+  <li><i>Fraud safety net.</i> Strong fraud phrases such as &ldquo;skimmed&rdquo; or &ldquo;wasn&rsquo;t me&rdquo; always escalate to Fraud. Weaker words such as &ldquo;suspicious&rdquo; escalate only if the model also gives fraud some probability, so a loan question that mentions fraud still reaches Loans.</li>
+  <li><i>Low confidence.</i> Below the review threshold, the message goes to manual review instead of a team.</li>
+  <li><i>Priority and SLA.</i> Keyword overrides can raise the priority; SLA hours come from the team and are tightened for urgent and high priority.</li>
+  <li><i>Secondary category.</i> If the second-best category clears a threshold, it is reported alongside the decision.</li>
+</ul>
+<p class="noindent">Every rule that fires is written to the ticket&rsquo;s audit trail.</p>
+
+<h3>G. Release Check</h3>
+
+<p>A newly trained version reaches production only if it passes a quality gate (Table&nbsp;III): macro F1 of at least 0.93, fraud recall of at least 0.90, topic accuracy of at least 0.80, and no regression of more than 0.01 against the current production model. The production version, v20261122-164348, passed all four checks.</p>
+
+<div class="tbl">
+  <div class="tcap"><span class="tn">TABLE III</span>Release Check of the Production Version</div>
+  <table>
+    <thead><tr><th>Check</th><th class="n">Required</th><th class="n">Value</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Macro F1</td><td class="n">&ge; 0.93</td><td class="n">0.9739</td><td>passed</td></tr>
+      <tr><td>Fraud recall</td><td class="n">&ge; 0.90</td><td class="n">0.9583</td><td>passed</td></tr>
+      <tr><td>Topic accuracy</td><td class="n">&ge; 0.80</td><td class="n">0.8994</td><td>passed</td></tr>
+      <tr><td>No regression vs. production</td><td class="n">&ge; 0.9639</td><td class="n">0.9739</td><td>passed</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>V. System Architecture</h2>
+
+
+
+<p>Fig.&nbsp;3 shows the whole system. It is a Python service built with FastAPI&nbsp;[10] and a separate Next.js front end.</p>
+
+<p><i>API.</i> The versioned REST API classifies one message (<code>/api/v1/classify</code>), a batch (<code>/classify/batch</code>), a CSV upload (<code>/classify/csv</code>) and, since this phase, large files as background jobs (<code>/api/v1/jobs</code>). It uses API keys, rate limiting, request identifiers and cross-origin resource sharing (CORS) for the front end.</p>
+
+<figure>
+<svg viewBox="0 0 320 262" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" font-size="8.6">
+  <defs>
+    <marker id="a1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#1f2937"/></marker>
+  </defs>
+  <g stroke="#1f2937" stroke-width="0.8" fill="#f3f4f6">
+    <rect x="6" y="4" width="220" height="26" rx="3"/>
+    <rect x="6" y="42" width="220" height="26" rx="3"/>
+    <rect x="6" y="80" width="220" height="26" rx="3"/>
+    <rect x="6" y="118" width="106" height="28" rx="3" fill="#e5e7eb"/>
+    <rect x="120" y="118" width="106" height="28" rx="3" fill="#e5e7eb"/>
+    <rect x="6" y="158" width="220" height="30" rx="3"/>
+    <rect x="6" y="200" width="70" height="26" rx="3" fill="#fff"/>
+    <rect x="81" y="200" width="70" height="26" rx="3" fill="#fff"/>
+    <rect x="156" y="200" width="70" height="26" rx="3" fill="#fff"/>
+    <rect x="6" y="234" width="220" height="24" rx="3"/>
+    <rect x="238" y="234" width="76" height="24" rx="3" fill="#fff"/>
+    <rect x="238" y="196" width="76" height="26" rx="3" fill="#fff"/>
+    <rect x="238" y="158" width="76" height="26" rx="3" fill="#fff"/>
+    <rect x="238" y="118" width="76" height="28" rx="3" fill="#fff"/>
+  </g>
+  <g fill="#111827" text-anchor="middle">
+    <text x="116" y="15" font-weight="bold">Customer message</text>
+    <text x="116" y="25" font-size="7.4" fill="#4b5563">mobile app &#183; web &#183; chat &#183; email</text>
+    <text x="116" y="53" font-weight="bold">PII masking</text>
+    <text x="116" y="63" font-size="7.4" fill="#4b5563">[CARD] (Luhn) &#183; [IBAN] &#183; [EMAIL] &#183; [PHONE] &#183; [ACCOUNT]</text>
+    <text x="116" y="91" font-weight="bold">TF-IDF features (computed once)</text>
+    <text x="116" y="101" font-size="7.4" fill="#4b5563">word n-grams + character n-grams</text>
+    <text x="59" y="129.5" font-weight="bold">Category head</text>
+    <text x="59" y="140" font-size="7.4" fill="#4b5563">Logistic Regression, 5</text>
+    <text x="173" y="129.5" font-weight="bold">Topic head</text>
+    <text x="173" y="140" font-size="7.4" fill="#4b5563">Logistic Regression, 83</text>
+    <text x="116" y="170" font-weight="bold">Routing rules</text>
+    <text x="116" y="181" font-size="7.4" fill="#4b5563">fraud safety net &#183; review threshold &#183; priority + SLA &#183; secondary</text>
+    <text x="41" y="211" font-weight="bold">Team queue</text>
+    <text x="41" y="221" font-size="7.2" fill="#4b5563">one of 5 teams</text>
+    <text x="116" y="211" font-weight="bold">Manual review</text>
+    <text x="116" y="221" font-size="7.2" fill="#4b5563">General Support</text>
+    <text x="191" y="211" font-weight="bold" fill="#b91c1c">Urgent alert</text>
+    <text x="191" y="221" font-size="7.2" fill="#4b5563">notifier</text>
+    <text x="116" y="244.5" font-weight="bold">Tickets + audit trail &#8594; Agent inbox</text>
+    <text x="116" y="254" font-size="7.2" fill="#4b5563">SQLAlchemy (SQLite) &#183; Next.js UI</text>
+    <text x="276" y="244.5" font-weight="bold">Corrections</text>
+    <text x="276" y="254" font-size="7.2" fill="#4b5563">agent re-routes</text>
+    <text x="276" y="207" font-weight="bold">Training</text>
+    <text x="276" y="217" font-size="7.2" fill="#4b5563">5-fold CV search</text>
+    <text x="276" y="169" font-weight="bold">Release check</text>
+    <text x="276" y="179" font-size="7.2" fill="#4b5563">quality gate</text>
+    <text x="276" y="129.5" font-weight="bold">Model registry</text>
+    <text x="276" y="140" font-size="7.2" fill="#4b5563">versions &#183; hot reload</text>
+  </g>
+  <g stroke="#1f2937" stroke-width="0.9" fill="none" marker-end="url(#a1)">
+    <line x1="116" y1="30" x2="116" y2="41"/>
+    <line x1="116" y1="68" x2="116" y2="79"/>
+    <line x1="59" y1="106" x2="59" y2="117"/>
+    <line x1="173" y1="106" x2="173" y2="117"/>
+    <line x1="59" y1="146" x2="59" y2="157"/>
+    <line x1="173" y1="146" x2="173" y2="157"/>
+    <line x1="41" y1="188" x2="41" y2="199"/>
+    <line x1="116" y1="188" x2="116" y2="199"/>
+    <line x1="191" y1="188" x2="191" y2="199"/>
+    <line x1="41" y1="226" x2="41" y2="233"/>
+    <line x1="116" y1="226" x2="116" y2="233"/>
+    <line x1="226" y1="246" x2="237" y2="246"/>
+    <line x1="276" y1="234" x2="276" y2="223"/>
+    <line x1="276" y1="196" x2="276" y2="185"/>
+    <line x1="276" y1="158" x2="276" y2="147"/>
+    <line x1="238" y1="132" x2="227" y2="132" stroke-dasharray="2.5 1.5"/>
+  </g>
+</svg>
+  <figcaption>Fig.&nbsp;3.&nbsp; Routing Desk pipeline. A message is masked, converted to features once, scored by the category and topic heads and passed through the routing rules to a team, to manual review or to an urgent alert. Agent corrections feed retraining; a version passes the release check before the registry hot-reloads it (dashed arrow).</figcaption>
+</figure>
+
+<p><i>Tickets.</i> Each routed message can become a ticket stored with SQLAlchemy (SQLite by default), together with an event history and the rules that fired. Agents can filter, re-route, add notes and see the history; a re-route becomes a labelled correction for the next training run.</p>
+
+<p><i>Registry.</i> Every trained version is stored with a model card. A production pointer selects the active version; promotion requires the release check, and the running service can hot-reload a new version without downtime.</p>
+
+<p><i>Monitoring and tests.</i> The service exposes Prometheus metrics and structured logs. The code base has 58 automated tests, including one that proves the bulk router makes exactly the same decision as the per-message router.</p>
+
+<figure>
+  <img src="figures/ui_route.png" alt="Route page showing a fraud message and the neural-network view">
+  <figcaption>Fig.&nbsp;4.&nbsp; Route page of the Next.js interface. The message &ldquo;Someone used my card in a shop I have never been to, please block it&rdquo; is routed to the Fraud &amp; Security Team with urgent priority. The network is a visual of the computation, not the model&rsquo;s structure.</figcaption>
+</figure>
+
+<p><i>User interface.</i> The new interface is written in Next.js 16 (App Router, TypeScript) with Tailwind CSS v4 and Motion animations, in a clean white design. It has six pages. <i>Route</i> classifies a message live and animates the decision through a network view (Fig.&nbsp;4). <i>Bulk routing</i> accepts a file of any size and shows real routed messages flowing into five team bins with live counters and speed (Fig.&nbsp;6). <i>Inbox</i> is the ticket queue. <i>Analytics</i> summarises the traffic. <i>Model</i> is the model report: release check, model comparison, confusion matrix, per-category scores, versions and figures. <i>Laya</i> shows the challenger comparison on time only (Fig.&nbsp;8).</p>
+
+<h2>VI. Scaling to One Million Messages</h2>
+
+<h3>A. Limits of the Previous Phase</h3>
+
+<p>The first phase handled about 153 messages per second per process through <code>/api/v1/classify</code>, one message per call. At that rate one million messages take about 1.8 hours (1,000,000&nbsp;/&nbsp;153&nbsp;&asymp;&nbsp;6,536&nbsp;s). The batch and CSV endpoints refused more than 1,000 messages per request with HTTP 413 (setting <code>max_batch_size&nbsp;=&nbsp;1000</code>), and the interface could only show batches up to 1,000. Four costs made each message slow: features were computed twice, by separate category and topic pipelines; rules were applied one message at a time in Python; a database ticket was created per message; and the whole request was held open until the end.</p>
+
+<h3>B. Bulk Engine Design</h3>
+
+<figure>
+<svg viewBox="0 0 320 262" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" font-size="8.6">
+  <defs>
+    <marker id="a2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1f2937"/></marker>
+  </defs>
+  <g stroke="#1f2937" stroke-width="0.8" fill="#f3f4f6">
+    <rect x="6" y="4" width="140" height="26" rx="3"/>
+    <rect x="174" y="4" width="140" height="26" rx="3"/>
+    <rect x="6" y="42" width="308" height="26" rx="3"/>
+    <rect x="6" y="80" width="308" height="26" rx="3"/>
+    <rect x="6" y="118" width="308" height="94" rx="4" fill="#fff" stroke-dasharray="3 2"/>
+  </g>
+  <g stroke="#1f2937" stroke-width="0.8" fill="#e5e7eb">
+    <rect x="14" y="132" width="88" height="72" rx="3"/>
+    <rect x="110" y="132" width="88" height="72" rx="3"/>
+    <rect x="218" y="132" width="88" height="72" rx="3"/>
+  </g>
+  <g stroke="#1f2937" stroke-width="0.6" fill="#fff">
+    <rect x="20" y="148" width="76" height="11" rx="2"/><rect x="20" y="162" width="76" height="11" rx="2"/><rect x="20" y="176" width="76" height="11" rx="2"/><rect x="20" y="190" width="76" height="11" rx="2"/>
+    <rect x="116" y="148" width="76" height="11" rx="2"/><rect x="116" y="162" width="76" height="11" rx="2"/><rect x="116" y="176" width="76" height="11" rx="2"/><rect x="116" y="190" width="76" height="11" rx="2"/>
+    <rect x="224" y="148" width="76" height="11" rx="2"/><rect x="224" y="162" width="76" height="11" rx="2"/><rect x="224" y="176" width="76" height="11" rx="2"/><rect x="224" y="190" width="76" height="11" rx="2"/>
+  </g>
+  <g stroke="#1f2937" stroke-width="0.8" fill="#f3f4f6">
+    <rect x="6" y="226" width="174" height="32" rx="3"/>
+    <rect x="190" y="226" width="124" height="32" rx="3" fill="#fff"/>
+  </g>
+  <g fill="#111827" text-anchor="middle">
+    <text x="76" y="15" font-weight="bold">Upload file once</text>
+    <text x="76" y="25" font-size="7.4" fill="#4b5563">CSV or text, any size</text>
+    <text x="244" y="15" font-weight="bold">Jobs API</text>
+    <text x="244" y="25" font-size="7.4" fill="#4b5563">HTTP 202 + job id &#183; progress polled</text>
+    <text x="160" y="53" font-weight="bold">Chunked reader: 20,000 rows per chunk</text>
+    <text x="160" y="63" font-size="7.4" fill="#4b5563">streamed from disk, never fully in memory &#183; rows counted with a CSV parser</text>
+    <text x="160" y="91" font-weight="bold">Bounded queue: workers &#215; 2 chunks in flight</text>
+    <text x="160" y="101" font-size="7.4" fill="#4b5563">ProcessPoolExecutor (spawn), one process per CPU core</text>
+    <text x="160" y="127.5" font-size="7.4" fill="#4b5563" font-style="italic">each worker loads the model once and handles whole chunks</text>
+    <text x="58" y="143" font-weight="bold">Worker 1</text>
+    <text x="154" y="143" font-weight="bold">Worker 2</text>
+    <text x="208" y="172" font-weight="bold" font-size="11">&#8943;</text>
+    <text x="262" y="143" font-weight="bold">Worker n</text>
+  </g>
+  <g fill="#111827" text-anchor="middle" font-size="7.2">
+    <text x="58" y="156.3">mask PII</text><text x="58" y="170.3">one forward pass</text><text x="58" y="184.3">vectorised rules</text><text x="58" y="198.3">format CSV</text>
+    <text x="154" y="156.3">mask PII</text><text x="154" y="170.3">one forward pass</text><text x="154" y="184.3">vectorised rules</text><text x="154" y="198.3">format CSV</text>
+    <text x="262" y="156.3">mask PII</text><text x="262" y="170.3">one forward pass</text><text x="262" y="184.3">vectorised rules</text><text x="262" y="198.3">format CSV</text>
+  </g>
+  <g fill="#111827" text-anchor="middle">
+    <text x="93" y="239" font-weight="bold">.part file &#8594; atomic rename</text>
+    <text x="93" y="250" font-size="7.4" fill="#4b5563">routed CSV for download</text>
+    <text x="252" y="239" font-weight="bold">Live view</text>
+    <text x="252" y="250" font-size="7.4" fill="#4b5563">6 sample rows per chunk</text>
+  </g>
+  <g stroke="#1f2937" stroke-width="0.9" fill="none" marker-end="url(#a2)">
+    <line x1="146" y1="17" x2="173" y2="17"/>
+    <line x1="244" y1="30" x2="244" y2="41"/>
+    <line x1="160" y1="68" x2="160" y2="79"/>
+    <line x1="160" y1="106" x2="160" y2="117"/>
+    <line x1="93" y1="212" x2="93" y2="225"/>
+    <line x1="252" y1="212" x2="252" y2="225"/>
+  </g>
+</svg>
+  <figcaption>Fig.&nbsp;5.&nbsp; Bulk engine. A file becomes a background job, is streamed in chunks of 20,000 rows and spread over one worker process per core. Each worker scores a chunk in one forward pass, applies the rules as array operations and writes its own CSV text; six real routed rows per chunk feed the live view.</figcaption>
+</figure>
+
+<p>The bulk engine (<code>bankq/bulk.py</code>) and the jobs API replace the request-at-a-time path for large inputs (Fig.&nbsp;5). The file is uploaded once and becomes a background job: the API answers HTTP 202 with a job identifier, the client polls progress, and the results are downloaded as CSV. The engine reads the file from disk with a chunked pandas reader in chunks of 20,000 rows, so a file is never fully in memory and its size is limited by disk, not RAM. Rows are counted with a real CSV parser, because quoted messages can contain line breaks. The upload returns at once, whatever the file size, and no connection is held open while the file is routed.</p>
+
+<h3>C. One Forward Pass per Chunk</h3>
+
+<p>Turning text into features is most of the work. With the shared feature step of Section&nbsp;IV-E, each chunk is transformed into one sparse feature matrix, and the category head and the topic head both score that same matrix. Features are therefore computed once instead of twice, and in one call per 20,000 messages instead of one call per message.</p>
+
+<h3>D. Vectorised Routing Rules</h3>
+
+<p>The rules of Section&nbsp;IV-F were rewritten as NumPy array operations over the whole chunk: the fraud escalation, the review threshold, the priority overrides, the SLA hours and the secondary category are all computed as masks and element-wise selections over arrays of probabilities and keyword hits. An automated test checks that this bulk router makes exactly the same decision as the per-message router, so the speed-up changes no routing outcome.</p>
+
+<h3>E. Parallel Workers</h3>
+
+<p>Chunks are spread over a <code>ProcessPoolExecutor</code> started with the spawn method, one process per CPU core. Each worker loads the model once and keeps it. A bounded queue keeps at most workers&nbsp;&times;&nbsp;2 chunks in flight, so memory stays flat however large the file is. Workers format their own CSV output, so the parent only appends text. Output is written to a <code>.part</code> file that is atomically renamed when the job completes, so a reader never sees a half-written result, and a crashed worker fails the job cleanly instead of hanging it.</p>
+
+<figure class="span">
+  <img src="figures/ui_bulk_live.png" alt="Bulk routing page mid-run with messages flowing into five team bins">
+  <figcaption>Fig.&nbsp;6.&nbsp; Bulk routing page during a run. Real routed messages sampled from each chunk flow from the file through the network view into the five team bins, whose counters grow as the job progresses. The network is a visualisation of the computation; the production model is TF-IDF with Logistic Regression and has no hidden layers.</figcaption>
+</figure>
+
+<h3>F. Live Sampling</h3>
+
+<p>Each finished chunk also returns six real routed sample rows. The Bulk routing page animates these rows as they flow from the file through a network view into the five team bins, while counters and the measured speed update (Fig.&nbsp;6). The animation therefore shows actual decisions from the running job, not invented examples.</p>
+
+
+
+<h2>VII. Decision-Model Challenger: Laya</h2>
+
+<h3>A. What Laya Is</h3>
+
+<p>Laya&nbsp;[9] is an open-weights &ldquo;System&nbsp;1&rdquo; decision model by NandhaKishorM / Convai Innovations, released under the Apache 2.0 licence and installable with <code>pip install laya</code>. The classic English checkpoint is a ModernBERT-large encoder&nbsp;[8] with a decision head: 421M parameters and 808&nbsp;MB. The caller gives it a <i>state</i> (here, the customer message) and one or more <i>typed questions</i>; it returns a probability for every option in a single forward pass. It never generates text.</p>
+
+<figure class="span">
+  <img src="figures/laya_time.png" alt="Three bar charts comparing time of our model and Laya">
+  <figcaption>Fig.&nbsp;7.&nbsp; Routing time, our model vs. Laya, lower is faster: one message (2.8&nbsp;ms vs. 63&nbsp;ms), start-up (1.6&nbsp;s vs. 7.9&nbsp;s) and 1,000,000 messages (19.3&nbsp;s vs. about 4.2 days, log scale). Apple M2; Laya on the M2 GPU. Time only.</figcaption>
+</figure>
+
+<h3>B. Integration</h3>
+
+<p>Laya is an optional dependency of our package (the <code>laya</code> extra), so the production service never loads it. An adapter, <code>bankq/ml/laya_challenger.py</code>, wraps it behind the same interface as our models and asks one typed question, &ldquo;Which banking team should handle this customer message?&rdquo;, with our five categories and their taxonomy descriptions as the options. A comparison script (<code>bankq/ml/laya_eval.py</code>), an API endpoint (<code>GET /api/v1/model/challengers</code>) and the UI page <code>/laya</code> expose the comparison. Laya is switched off: it never routes a message. It was asked zero-shot, without any training on our data.</p>
+
+<h3>C. Time Comparison</h3>
+
+<p>We compare Laya with our model on time only. Both were measured on the same Apple M2 laptop, with Laya on the M2 GPU through Metal Performance Shaders (MPS). Table&nbsp;IV and Fig.&nbsp;7 summarise the results.</p>
+
+<div class="tbl">
+  <div class="tcap"><span class="tn">TABLE IV</span>Time and Size: Our Model vs. Laya (Apple M2)</div>
+  <table>
+    <thead><tr><th>Measure</th><th class="n">Our model</th><th class="n">Laya</th></tr></thead>
+    <tbody>
+      <tr><td>One message</td><td class="n">2.8 ms</td><td class="n">63 ms</td></tr>
+      <tr><td>Batched throughput</td><td class="n">11,073 msg/s<sup>a</sup></td><td class="n">2.74 msg/s</td></tr>
+      <tr><td>1,000,000 messages</td><td class="n">19.3 s<sup>b</sup></td><td class="n">&asymp; 4.2 days</td></tr>
+      <tr><td>Start-up (load)</td><td class="n">1.6 s</td><td class="n">7.9 s</td></tr>
+      <tr><td>Size</td><td class="n">27.6 MB</td><td class="n">808 MB</td></tr>
+      <tr><td colspan="3" style="font-style:italic;padding-top:2pt"><sup>a</sup>1 CPU core, model scoring. <sup>b</sup>Bulk engine, 8 workers. Laya on the M2 GPU (MPS); 1M time at 2.74 msg/s.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>One message takes 63&nbsp;ms with Laya against 2.8&nbsp;ms with our model, 22&times; longer. Batched, Laya processes 2.74 messages per second against 11,073 for our model on one CPU core, so in the time Laya routes one message our model routes about 4,000 (11,073&nbsp;/&nbsp;2.74&nbsp;&asymp;&nbsp;4,041). One million messages would take Laya about 4.2 days, against 19.3&nbsp;s for the bulk engine. Laya also needs 7.9&nbsp;s to start against 1.6&nbsp;s, and its checkpoint is 808&nbsp;MB against 27.6&nbsp;MB. The Laya page of the interface replays this gap as a ten-second race at the measured speeds (Fig.&nbsp;8).</p>
+
+
+
+<figure>
+  <img src="figures/ui_laya_time.png" alt="Laya page time section with a race and a time table">
+  <figcaption>Fig.&nbsp;8.&nbsp; Time section of the Laya page: a real-time race in which each model routes messages at its measured speed, and the time table. The page compares the two models on time only.</figcaption>
+</figure>
+
+<h3>D. Why Laya Was Not Adopted</h3>
+
+<p>Three reasons kept Laya out of the routing path. <i>Time:</i> it is thousands of times slower in batch; one million messages would take days instead of seconds, and it needs a GPU to be practical at all. <i>Not trained on our data:</i> asked zero-shot, it only had a one-line description of each team. Its own authors describe the base checkpoint as &ldquo;a fast base to specialise, not a zero-shot decision engine&rdquo;; a fair quality comparison needs fine-tuning first, which is planned as the transformer challenger of the next phase. <i>Size and cost:</i> 808&nbsp;MB with a GPU recommended, against 27.6&nbsp;MB that runs on any CPU.</p>
+
+<h3>E. Why Decision Models Still Matter</h3>
+
+<p>For a fixed set of five teams with plenty of labelled data, TF-IDF with Logistic Regression is the right tool: fast, small, accurate and explainable through its indicator words. That is why it stays in production. A decision model adds what a fixed classifier cannot do without retraining: new questions or new teams at request time, by adding an option; several decisions in one pass, such as team, urgency, &ldquo;is the customer threatening to leave?&rdquo; and &ldquo;is a refund requested?&rdquo;; calibrated probabilities with abstention and prediction sets, so it can say &ldquo;not sure&rdquo;; and more than 100 languages with its multilingual checkpoint. Our plan is to keep TF-IDF for the bulk of the traffic and to use a decision model only as a second opinion on the small share of low-confidence messages, or for new decision types, where its time cost is affordable.</p>
+
+<h2>VIII. Results</h2>
+
+<h3>A. Model Selection</h3>
+
+<div class="tbl">
+  <div class="tcap"><span class="tn">TABLE V</span>Model Selection: Cross-Validation and Test Scores</div>
+  <table>
+    <thead><tr><th>Model</th><th class="n">CV macro F1</th><th class="n">Test acc.</th><th class="n">Test macro F1</th></tr></thead>
+    <tbody>
+      <tr><td>Majority baseline</td><td class="n">0.1347</td><td class="n">0.4637</td><td class="n">0.1267</td></tr>
+      <tr><td>Complement NB (&alpha; 0.1)</td><td class="n">0.9396</td><td class="n">0.9533</td><td class="n">0.9485</td></tr>
+      <tr><td>Linear SVM (C 1.0)</td><td class="n">0.9655</td><td class="n">0.9671</td><td class="n">0.9568</td></tr>
+      <tr class="best"><td>Logistic Regression (C 20)</td><td class="n">0.9663</td><td class="n">0.9734</td><td class="n">0.9739</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>Table&nbsp;V and Fig.&nbsp;9 compare the four candidates. All three learned models are far above the majority baseline. Logistic Regression wins on cross-validation by a small margin over the linear SVM, and the fixed test set confirms the choice: 0.9734 accuracy and 0.9739 macro F1, against 0.9671 and 0.9568 for the SVM. Complement Naive Bayes is clearly behind on both.</p>
+
+<figure>
+  <img src="figures/model_selection.png" alt="Horizontal bar chart of cross-validation macro F1 for four models">
+  <figcaption>Fig.&nbsp;9.&nbsp; Model selection by 5-fold cross-validation macro F1. Logistic Regression (0.9663) narrowly beats the linear SVM (0.9655).</figcaption>
+</figure>
+
+<h3>B. Category Classification</h3>
+
+<p>On the 3,192 test messages the production model reaches 97.34% accuracy, a macro F1 of 0.9739 and a weighted F1 of 0.9734; 85 messages are misclassified. Table&nbsp;VI and Fig.&nbsp;10 give the scores per category. Loans are perfect on all three measures. Fraud has the lowest precision, 0.9388, but a recall of 0.9583: 230 of 240 fraud messages are caught. For a bank this is the right trade-off, since a false fraud alarm costs an analyst a few minutes while a missed fraud report costs the customer money.</p>
+
+<div class="tbl">
+  <div class="tcap"><span class="tn">TABLE VI</span>Per-Category Test Scores (Logistic Regression)</div>
+  <table>
+    <thead><tr><th>Category</th><th class="n">Precision</th><th class="n">Recall</th><th class="n">F1</th><th class="n">Support</th></tr></thead>
+    <tbody>
+      <tr><td>Payments</td><td class="n">0.9855</td><td class="n">0.9662</td><td class="n">0.9758</td><td class="n">1,480</td></tr>
+      <tr><td>Cards</td><td class="n">0.9680</td><td class="n">0.9791</td><td class="n">0.9736</td><td class="n">959</td></tr>
+      <tr><td>Loans</td><td class="n">1.0000</td><td class="n">1.0000</td><td class="n">1.0000</td><td class="n">113</td></tr>
+      <tr><td>Account issues</td><td class="n">0.9564</td><td class="n">0.9875</td><td class="n">0.9717</td><td class="n">400</td></tr>
+      <tr><td>Fraud</td><td class="n">0.9388</td><td class="n">0.9583</td><td class="n">0.9485</td><td class="n">240</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<figure>
+  <img src="figures/per_category.png" alt="Grouped bar chart of precision, recall and F1 per category">
+  <figcaption>Fig.&nbsp;10.&nbsp; Precision, recall and F1 per category on the 3,192 test messages. The y-axis starts at 0.90.</figcaption>
+</figure>
+
+<figure>
+  <img src="figures/confusion_matrix.png" alt="Confusion matrix of the Logistic Regression model on the test set">
+  <figcaption>Fig.&nbsp;11.&nbsp; Confusion matrix of the production model on the test set (rows: actual, columns: predicted). The largest share of the 85 errors is between payments and cards.</figcaption>
+</figure>
+
+<p>The confusion matrix (Fig.&nbsp;11) shows where the 85 errors are. The largest share lies between payments and cards, the two largest classes, whose vocabularies overlap (a card payment is both). Loans are never confused with anything, and the few fraud messages that are missed are mostly read as payments, which is the case the fraud safety net of Section&nbsp;IV-F is designed to catch.</p>
+
+<h3>C. Topic Classification</h3>
+
+<p>The 83-class topic head reaches 89.94% accuracy, a macro F1 of 0.8694 and a top-3 accuracy of 96.65%. Agents are shown the top topics within the routed category; the correct topic is among the model&rsquo;s three most likely topics for 96.65% of test messages.</p>
+
+<h3>D. Throughput and Time</h3>
+
+<div class="tbl">
+  <div class="tcap"><span class="tn">TABLE VII</span>Throughput Before and After the Bulk Engine</div>
+  <table>
+    <thead><tr><th>Setting</th><th class="n">msg/s</th><th class="n">1M messages</th></tr></thead>
+    <tbody>
+      <tr><td>Before: one message per call</td><td class="n">153</td><td class="n">&asymp; 1.8 h</td></tr>
+      <tr><td>Bulk engine, 1 core</td><td class="n">13,120</td><td class="n">&ndash;</td></tr>
+      <tr class="best"><td>Bulk engine, 8 workers</td><td class="n">51,799</td><td class="n">19.3 s</td></tr>
+      <tr><td colspan="3" style="font-style:italic;padding-top:2pt">Apple M2 laptop, 4 performance + 4 efficiency cores.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>All speed measurements were taken on an Apple M2 laptop with four performance and four efficiency cores (Table&nbsp;VII). The bulk engine routes 13,120 messages per second on one core and 51,799 with eight workers, against 153 per process before (Fig.&nbsp;12). One million messages are routed in 19.3&nbsp;s instead of about 1.8 hours (Fig.&nbsp;13). The speed-up has three sources: features computed once instead of twice; whole-chunk array mathematics instead of per-message Python; and eight cores instead of one. Eight workers give about 4&times;, not 8&times;, because four of the cores are slower efficiency cores.</p>
+
+<figure>
+  <img src="figures/throughput.png" alt="Bar chart of throughput before and after">
+  <figcaption>Fig.&nbsp;12.&nbsp; Throughput on an Apple M2 laptop: 153 messages per second before, 13,120 with the bulk engine on one core and 51,799 with eight workers.</figcaption>
+</figure>
+
+<figure>
+  <img src="figures/time_1m.png" alt="Time to route one million messages, log scale">
+  <figcaption>Fig.&nbsp;13.&nbsp; Time to route 1,000,000 messages (log scale): about 1.8 hours before, 19.3&nbsp;s with the bulk engine and eight workers.</figcaption>
+</figure>
+
+<p>The speed-up did not cost quality. With the same model and the same data (fingerprint <code>2025a09cd7997a7e</code>), category accuracy is unchanged at 97.34%, and topic accuracy moved from 89.97% to 89.94%, about one message of 3,192, because the topic head now shares the category features.</p>
+
+<h2>IX. Discussion and Limitations</h2>
+
+<p><i>A file, not a crowd.</i> The one-million result is one million messages in a file, processed as a batch. It is not one million simultaneous users. Serving that many concurrent requests would need several API servers behind a load balancer and a shared queue. The jobs queue is currently in-process and runs one job at a time; with several servers it would move to a shared queue with files in object storage, while the bulk engine itself stays the same. SQLite is adequate for a single instance but not for many writers.</p>
+
+<p><i>The animation is a visualisation.</i> The Route and Bulk routing pages draw a neural network with hidden layers. The words, their weights and each team&rsquo;s score are real values from the model, but the hidden layers only illustrate the computation: the production model is TF-IDF with Logistic Regression and has no hidden layers.</p>
+
+<p><i>Laya was zero-shot.</i> Laya was asked without any training on our data and with only a one-line description of each team. This paper therefore compares it on time alone. Any comparison of decision quality would first require fine-tuning Laya on the same training data and evaluating it on the same fixed test set.</p>
+
+<p><i>Data and measurement.</i> Banking77 contains no loan intents, so the loan class relies on generated queries; its perfect test scores may be optimistic for real loan messages, which are likely to be more varied. The test set is fixed and never trained on, but it is drawn from the same sources as the training data, so the scores describe in-distribution performance; messages from a new channel or product could score lower. The fraud safety net relies on keyword lists, which need maintenance as fraud language changes. All timings come from one laptop; absolute numbers will differ on server hardware, although the relative effect of the three optimisations should hold.</p>
+
+<h2>X. Conclusion and Future Work</h2>
+
+<p>Routing Desk shows that a classical, explainable model is sufficient for routing banking messages into a fixed set of teams: TF-IDF features with Logistic Regression reach 97.34% accuracy and 0.9739 macro F1 and catch 230 of 240 fraud messages, with personal data masked first and a release check guarding production. Rebuilding the batch path around streaming chunks, one forward pass, vectorised rules and parallel workers took the system from a limit of 1,000 messages per request to one million messages in 19.3&nbsp;s, without changing a single routing decision. Measured against Laya, an open-weights decision model, the linear model routes one message in 2.8&nbsp;ms against 63&nbsp;ms and one million messages in seconds instead of days.</p>
+
+<p>Future work follows directly from these limits. First, fine-tune a transformer challenger, Laya or another encoder, on our training data so that a fair quality comparison becomes possible. Second, use a decision model as a second opinion only on low-confidence messages, and for new decision types such as urgency or refund requests. Third, move the job queue and the database to shared services so that several servers can run the bulk engine together.</p>
+
+<h2>References</h2>
+
+<ol class="refs">
+  <li data-n="1">I. Casanueva, T. Tem&#269;inas, D. Gerz, M. Henderson, and I. Vuli&#263;, &ldquo;Efficient intent detection with dual sentence encoders,&rdquo; in <i>Proc. 2nd Workshop on NLP for Conversational AI</i>, ACL, 2020, pp. 38&ndash;45.</li>
+  <li data-n="2">G. Salton and C. Buckley, &ldquo;Term-weighting approaches in automatic text retrieval,&rdquo; <i>Information Processing &amp; Management</i>, vol. 24, no. 5, pp. 513&ndash;523, 1988.</li>
+  <li data-n="3">F. Pedregosa <i>et al.</i>, &ldquo;Scikit-learn: Machine learning in Python,&rdquo; <i>Journal of Machine Learning Research</i>, vol. 12, pp. 2825&ndash;2830, 2011.</li>
+  <li data-n="4">R.-E. Fan, K.-W. Chang, C.-J. Hsieh, X.-R. Wang, and C.-J. Lin, &ldquo;LIBLINEAR: A library for large linear classification,&rdquo; <i>Journal of Machine Learning Research</i>, vol. 9, pp. 1871&ndash;1874, 2008.</li>
+  <li data-n="5">T. Joachims, &ldquo;Text categorization with support vector machines: Learning with many relevant features,&rdquo; in <i>Proc. ECML</i>, 1998, pp. 137&ndash;142.</li>
+  <li data-n="6">J. D. M. Rennie, L. Shih, J. Teevan, and D. R. Karger, &ldquo;Tackling the poor assumptions of naive Bayes text classifiers,&rdquo; in <i>Proc. ICML</i>, 2003, pp. 616&ndash;623.</li>
+  <li data-n="7">J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, &ldquo;BERT: Pre-training of deep bidirectional transformers for language understanding,&rdquo; in <i>Proc. NAACL-HLT</i>, 2019, pp. 4171&ndash;4186.</li>
+  <li data-n="8">B. Warner <i>et al.</i>, &ldquo;Smarter, better, faster, longer: A modern bidirectional encoder for fast, memory efficient, and long context finetuning and inference,&rdquo; arXiv:2412.13663, 2024.</li>
+  <li data-n="9">N. M and A. M, &ldquo;From Laya to Vega: Open non-autoregressive decision models with calibrated probabilities,&rdquo; Preprints, 2026, doi: 10.20944/preprints202611.0781.v1.</li>
+  <li data-n="10">S. Ram&iacute;rez, &ldquo;FastAPI,&rdquo; 2018. [Online]. Available: https://fastapi.tiangolo.com</li>
+  <li data-n="11">C. D. Manning, P. Raghavan, and H. Sch&uuml;tze, <i>Introduction to Information Retrieval</i>. Cambridge, U.K.: Cambridge University Press, 2008.</li>
+</ol>
+
+</div>
+<script>
+/* IEEE-style pagination: two fixed columns per page, LaTeX-like floats (single-column figures and
+   tables go to the top of the next column when they do not fit; full-width figures go to the top of
+   the next page), paragraphs and lists split across columns, and the last page balanced. */
+(function () {
+  const SRC = document.getElementById('src');
+  const HEADER = document.querySelector('.header');
+  const MIN_LINES_PX = 27;
+  const AVOID_WIDOWS = false;  // true trades single-line widows for larger gaps   // about two lines of 10pt text
+
+  function kind(el) {
+    if (el.matches('figure.span')) return 'span';
+    if (el.matches('figure, .tbl')) return 'float';
+    if (el.matches('h2, h3')) return 'heading';
+    if (el.matches('ol, ul')) return 'list';
+    return 'para';
+  }
+
+  function layout(out, lastOverride) {
+    out.innerHTML = '';
+    const blocks = Array.from(SRC.children).map(e => e.cloneNode(true));
+    const floatQ = [], spanQ = [];
+    let page = null, inner = null, colIdx = 0, colH = 0, pageNo = 0;
+    const pages = [];
+
+    const fits = () => inner.offsetHeight <= colH + 0.5;
+    const isEmpty = () => inner.children.length === 0;
+
+    function newPage() {
+      pageNo++;
+      page = document.createElement('div');
+      page.className = 'page';
+      const top = document.createElement('div'); top.className = 'top';
+      const row = document.createElement('div'); row.className = 'row';
+      page.append(top, row);
+      out.appendChild(page);
+      if (pageNo === 1) top.appendChild(HEADER.cloneNode(true));
+      const pageH = page.clientHeight;
+      while (spanQ.length) {
+        top.appendChild(spanQ[0]);
+        if (top.offsetHeight > pageH * 0.62 && top.children.length > 1) { top.removeChild(spanQ[0]); break; }
+        spanQ.shift();
+      }
+      colH = pageH - top.offsetHeight;
+      if (lastOverride && pageNo === lastOverride.page) colH = Math.min(colH, lastOverride.h);
+      page.cols = [];
+      for (let i = 0; i < 2; i++) {
+        const col = document.createElement('div'); col.className = 'col';
+        const inn = document.createElement('div'); inn.className = 'inner flow';
+        col.appendChild(inn); row.appendChild(col); page.cols.push(inn);
+      }
+      pages.push(page);
+      colIdx = 0; startColumn();
+    }
+    function startColumn() {
+      inner = page.cols[colIdx];
+      while (floatQ.length && !spanQ.length) {
+        inner.appendChild(floatQ[0]);
+        if (!fits() && inner.children.length > 1) { inner.removeChild(floatQ[0]); break; }
+        floatQ.shift();
+      }
+    }
+    function nextColumn() { if (colIdx === 0) { colIdx = 1; startColumn(); } else newPage(); }
+    // Move to the next column, taking along any headings left at the bottom of this one.
+    function breakColumn() {
+      const carry = [];
+      while (inner.lastElementChild && inner.lastElementChild.matches('h2, h3') && inner.children.length > carry.length) {
+        carry.unshift(inner.lastElementChild); inner.removeChild(inner.lastElementChild);
+      }
+      nextColumn();
+      carry.forEach(h => inner.appendChild(h));
+    }
+
+    function placeFloat(el) {
+      if (floatQ.length || spanQ.length) { floatQ.push(el); return; }
+      inner.appendChild(el);
+      if (!fits()) { inner.removeChild(el); floatQ.push(el); }
+    }
+    function placeHeading(el) {
+      // keep with next: the heading must be followed by at least two lines of text in this column
+      const probe = document.createElement('p');
+      probe.innerHTML = 'x<br>x';
+      inner.appendChild(el); inner.appendChild(probe);
+      const ok = fits();
+      inner.removeChild(probe);
+      if (!ok) { inner.removeChild(el); breakColumn(); inner.appendChild(el); }
+    }
+    function boundaries(el) {
+      const pts = [];
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        const re = /\s+/g; let m;
+        while ((m = re.exec(n.data))) pts.push([n, m.index]);
+      }
+      return pts;
+    }
+    function piece(el, fromNode, fromOff, toNode, toOff) {
+      const r = document.createRange();
+      if (fromNode) r.setStart(fromNode, fromOff); else r.setStart(el, 0);
+      if (toNode) r.setEnd(toNode, toOff); else r.setEnd(el, el.childNodes.length);
+      const c = el.cloneNode(false);
+      c.appendChild(r.cloneContents());
+      return c;
+    }
+    function placePara(el) {
+      for (;;) {
+        inner.appendChild(el);
+        if (fits()) return;
+        inner.removeChild(el);
+        const pts = boundaries(el);
+        const base = inner.offsetHeight;
+        // largest split point whose first part keeps the column within `limit`
+        const maxK = (limit) => {
+          let lo = 0, hi = pts.length - 1, best = -1;
+          while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            const a = piece(el, null, 0, pts[mid][0], pts[mid][1]);
+            a.classList.add('first-part');
+            inner.appendChild(a);
+            const ok = inner.offsetHeight <= limit + 0.5;
+            inner.removeChild(a);
+            if (ok) { best = mid; lo = mid + 1; } else hi = mid - 1;
+          }
+          return best;
+        };
+        const height = (node) => { inner.appendChild(node); const h = inner.offsetHeight; inner.removeChild(node); return h; };
+        const split = (k) => {
+          const first = piece(el, null, 0, pts[k][0], pts[k][1]);
+          first.classList.add('first-part');
+          const rest = piece(el, pts[k][0], pts[k][1], null, 0);
+          rest.classList.add('cont'); rest.classList.remove('first-part');
+          return [first, rest];
+        };
+        let k = maxK(colH);
+        if (k >= 0) {
+          let [first, rest] = split(k);
+          const restH = height(rest) - base;
+          if (AVOID_WIDOWS && restH < MIN_LINES_PX) {   // optional: no single-line widow in the next column
+            k = maxK(height(first) - restH);
+            if (k >= 0) [first, rest] = split(k);
+          }
+          if (k >= 0 && (height(first) - base >= MIN_LINES_PX || isEmpty())) {
+            inner.appendChild(first);
+            el = rest;
+            nextColumn();
+            continue;
+          }
+        }
+        breakColumn();
+      }
+    }
+    function placeList(el) {
+      for (;;) {
+        inner.appendChild(el);
+        if (fits()) return;
+        inner.removeChild(el);
+        const items = Array.from(el.children);
+        const head = el.cloneNode(false);
+        inner.appendChild(head);
+        let k = 0;
+        for (; k < items.length; k++) {
+          head.appendChild(items[k]);
+          if (!fits()) { head.removeChild(items[k]); break; }
+        }
+        const rest = el.cloneNode(false);
+        items.slice(k).forEach(i => rest.appendChild(i));
+        if (k === 0) { inner.removeChild(head); el = rest; breakColumn(); continue; }
+        if (rest.tagName === 'OL' && !rest.classList.contains('refs')) rest.start = (el.start || 1) + k;
+        el = rest;
+        nextColumn();
+      }
+    }
+
+    newPage();
+    for (const el of blocks) {
+      const k = kind(el);
+      if (k === 'span') spanQ.push(el);
+      else if (k === 'float') placeFloat(el);
+      else if (k === 'heading') placeHeading(el);
+      else if (k === 'list') placeList(el);
+      else placePara(el);
+    }
+    while (floatQ.length || spanQ.length) {
+      if (spanQ.length) newPage(); else nextColumn();
+    }
+    return { pages: pages.length, colH };
+  }
+
+  function run() {
+    document.body.classList.add('paged');
+    const old = document.getElementById('pages');
+    if (old) old.remove();
+    const out = document.createElement('div');
+    out.id = 'pages';
+    document.body.appendChild(out);
+    const full = layout(out);
+    // Balance the last page: the smallest column height that keeps the page count.
+    const L = full.pages;
+    let lo = 40, hi = Math.ceil(full.colH), best = hi;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const r = layout(out, { page: L, h: mid });
+      if (r.pages === L) { best = mid; hi = mid - 1; } else lo = mid + 1;
+    }
+    // Among heights a little above the minimum, keep the one whose two columns end closest together.
+    const diff = () => {
+      const cols = out.lastElementChild.querySelectorAll('.inner');
+      return Math.abs(cols[0].offsetHeight - cols[1].offsetHeight);
+    };
+    let pick = best, pickDiff = Infinity;
+    for (let h = best; h <= Math.min(best + 90, Math.ceil(full.colH)); h += 3) {
+      if (layout(out, { page: L, h }).pages !== L) continue;
+      const d = diff();
+      if (d < pickDiff - 1) { pick = h; pickDiff = d; }
+    }
+    layout(out, { page: L, h: pick });
+    SRC.remove();  // keep only the paginated copy in the document (SVG marker ids must be unique)
+    window.__layoutDone = true;
+  }
+  window.__paginate = run;
+  if (document.readyState === 'complete') run(); else window.addEventListener('load', run);
+})();
+</script>
+</body>
+</html>
