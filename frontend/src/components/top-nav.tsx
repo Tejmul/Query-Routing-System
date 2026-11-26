@@ -11,6 +11,7 @@ const NAV = [
   { href: "/inbox", label: "Inbox" },
   { href: "/analytics", label: "Analytics" },
   { href: "/model", label: "Model" },
+  { href: "/laya", label: "Laya" },
 ];
 
 export function Logo() {
