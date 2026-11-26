@@ -71,8 +71,13 @@ export function InboxView() {
       .finally(() => setLoadingMore(false));
   }
 
+  // Clicking through tickets quickly: only the last click is shown, whatever order replies arrive in.
+  const openSeq = useRef(0);
   const open = useCallback((ref: string) => {
-    api<Ticket>(`/api/v1/tickets/${ref}`).then(setSelected).catch((err) => setError((err as Error).message));
+    const mine = ++openSeq.current;
+    api<Ticket>(`/api/v1/tickets/${encodeURIComponent(ref)}`)
+      .then((t) => { if (mine === openSeq.current) setSelected(t); })
+      .catch((err) => { if (mine === openSeq.current) setError((err as Error).message); });
   }, []);
 
   // Opened from a toast link: /inbox?ticket=TKT-000123
@@ -80,13 +85,13 @@ export function InboxView() {
     const ref = new URLSearchParams(window.location.search).get("ticket");
     if (!ref) return;
     let current = true;
-    api<Ticket>(`/api/v1/tickets/${ref}`).then((t) => current && setSelected(t)).catch((err) => current && setError((err as Error).message));
+    api<Ticket>(`/api/v1/tickets/${encodeURIComponent(ref)}`).then((t) => current && setSelected(t)).catch((err) => current && setError((err as Error).message));
     return () => { current = false; };
   }, []);
 
   async function patch(body: Record<string, unknown>, message?: string) {
     if (!selected) return;
-    const updated = await send<Ticket>(`/api/v1/tickets/${selected.ref}`, "PATCH", { actor: "you", ...body });
+    const updated = await send<Ticket>(`/api/v1/tickets/${encodeURIComponent(selected.ref)}`, "PATCH", { actor: "you", ...body });
     setSelected(updated);
     setItems((list) => list.map((t) => (t.ref === updated.ref ? updated : t)));
     refreshBadge();
