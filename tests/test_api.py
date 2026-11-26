@@ -102,3 +102,25 @@ def test_analytics_and_model_endpoints(client):
     card = client.get("/api/v1/model").json()
     assert card["quality_gate"]["passed"]
     assert any(v["production"] for v in client.get("/api/v1/model/versions").json()["versions"])
+
+
+def test_cors_allows_the_frontend_origin(client):
+    r = client.options("/api/v1/jobs", headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "POST"})
+    assert r.status_code == 200 and r.headers["access-control-allow-origin"] == "http://localhost:3000"
+    r = client.options("/api/v1/jobs", headers={"Origin": "http://evil.example", "Access-Control-Request-Method": "POST"})
+    assert "access-control-allow-origin" not in r.headers
+
+
+def test_challengers_are_listed_but_never_route(client, settings, tmp_path):
+    import json
+    old = settings.reports_dir
+    settings.reports_dir = tmp_path
+    try:
+        assert client.get("/api/v1/model/challengers").json()["challengers"] == []
+        (tmp_path / "challengers").mkdir()
+        (tmp_path / "challengers" / "laya.json").write_text(json.dumps({"challenger": "laya", "laya": {"accuracy": 0.5}}))
+        body = client.get("/api/v1/model/challengers").json()
+        assert [c["challenger"] for c in body["challengers"]] == ["laya"]
+        assert body["routing_model"] == client.get("/ready").json()["model_version"]
+    finally:
+        settings.reports_dir = old

@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     bulk_chunk_size: int = 20000
     jobs_dir: Path = ROOT / "data" / "jobs"
     max_upload_mb: int = 1024
+    # Browser origins allowed to call the API directly (the Next.js frontend sends big uploads straight here).
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def api_key_set(self) -> set[str]:

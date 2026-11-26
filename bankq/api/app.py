@@ -7,6 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -54,6 +55,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(RequestContextMiddleware)
+app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origin_list, allow_methods=["*"],
+                   allow_headers=["*"], expose_headers=["X-Request-ID", "Content-Disposition"])
 app.include_router(system.router)
 app.include_router(classify.router)
 app.include_router(tickets.router)

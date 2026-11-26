@@ -885,13 +885,15 @@ async function runJob(file) {
   panel.hidden = false;
   panel.className = "card job";
   $("job-name").textContent = file.name;
-  ["job-stats", "job-split-wrap", "job-preview", "job-download"].forEach((id) => { $(id).hidden = true; });
+  ["job-stats", "live-board", "job-preview", "job-download"].forEach((id) => { $(id).hidden = true; });
   btn.disabled = true;
   btn.textContent = "Uploading…";
   setJobStage("Uploading 0%", 0);
   try {
     const job = await uploadFile(file);
     btn.textContent = "Routing…";
+    liveReset();
+    panel.classList.add("running");
     pollJob(job.id);
   } catch (err) {
     panel.classList.add("failed");
@@ -911,10 +913,12 @@ async function pollJob(id) {
       setJobStage(`Routing ${fmtNum(job.processed)} of ${fmtNum(job.total)} · ${fmtNum(s.rows_per_second || 0)} messages/s`,
         0.1 + 0.9 * job.progress);
     }
+    if (job.status === "running") liveUpdate(job);
     if (job.status === "done") return finishJob(job);
     if (job.status === "failed") throw new Error(job.error || "The job failed.");
-    jobTimer = setTimeout(() => pollJob(id), 500);
+    jobTimer = setTimeout(() => pollJob(id), 400);
   } catch (err) {
+    liveStop();
     $("job").classList.add("failed");
     setJobStage(err.message, 1);
     $("batch-btn").disabled = false;
@@ -922,8 +926,129 @@ async function pollJob(id) {
   }
 }
 
+/* Live board: real routed rows and real totals from the running job, animated between polls. */
+const LIVE_KEYS = [...ORDER, "urgent", "review"];
+const live = { seen: 0, queue: [], targets: {}, shown: {}, rates: [], last: null, started: 0, ema: 0,
+  running: false, raf: 0, drip: 0, sparkLen: 0 };
+
+function liveReset() {
+  liveStop();
+  Object.assign(live, { seen: 0, queue: [], rates: [], last: null, started: 0, ema: 0, running: true, sparkLen: 0 });
+  LIVE_KEYS.forEach((k) => { live.targets[k] = 0; live.shown[k] = 0; });
+  $("live-teams").innerHTML = ORDER.map((c) => `
+    <li class="lt-row c-${c}"><span class="tag c-${c}">${esc(catLabel(c))}</span><b id="lt-n-${c}">0</b>
+      <span class="lt-bar"><span id="lt-b-${c}"></span></span></li>`).join("");
+  $("live-feed").innerHTML = '<li class="lf-empty">Loading the model on every CPU core…</li>';
+  $("lb-title").textContent = "Routing live";
+  $("lb-clock").textContent = "0.0 s";
+  $("lb-rate").textContent = "0 msg/s";
+  $("spark-line").setAttribute("d", "");
+  $("spark-area").setAttribute("d", "");
+  $("live-board").hidden = false;
+}
+
+function liveStop() {
+  live.running = false;
+  clearTimeout(live.drip);
+  cancelAnimationFrame(live.raf);
+  live.drip = live.raf = 0;
+  $("job").classList.remove("running");
+}
+
+function liveUpdate(job) {
+  const s = job.summary || {};
+  const now = performance.now();
+  if (!live.started) live.started = now;
+  ORDER.forEach((c) => { live.targets[c] = (s.categories || {})[c] || 0; });
+  live.targets.urgent = s.urgent || 0;
+  live.targets.review = s.needs_review || 0;
+  // Speed: messages actually finished between two polls, smoothed because chunks finish in bursts.
+  if (live.last && job.processed > live.last.n) {
+    const r = (job.processed - live.last.n) / ((now - live.last.t) / 1000);
+    live.ema = live.ema ? live.ema * 0.6 + r * 0.4 : r;
+    live.rates.push(live.ema);
+  }
+  if (!live.last || job.processed > live.last.n) live.last = { n: job.processed, t: now };
+  const fresh = (s.live || []).filter((r) => r.seq > live.seen);
+  if (fresh.length) {
+    live.seen = fresh[fresh.length - 1].seq;
+    live.queue.push(...fresh);
+    if (live.queue.length > 30) live.queue.splice(0, live.queue.length - 30);
+  }
+  if (!live.raf) live.raf = requestAnimationFrame(liveTick);
+  if (!live.drip) dripFeed();
+}
+
+function liveFinish(job) {
+  const s = job.summary;
+  live.running = false;
+  $("job").classList.remove("running");
+  $("lb-title").textContent = `Finished · ${fmtNum(s.routed)} messages routed`;
+  $("lb-clock").textContent = `${s.seconds} s`;
+  $("lb-rate").textContent = `${fmtNum(s.rows_per_second)} msg/s average`;
+  if (!live.raf) live.raf = requestAnimationFrame(liveTick);
+}
+
+function dripFeed() {
+  // Release queued rows one at a time, spread over the poll interval, so the feed flows.
+  const row = live.queue.shift();
+  if (row) addFeedRow(row);
+  const gap = live.queue.length ? Math.max(35, 380 / (live.queue.length + 1)) : 120;
+  live.drip = live.running || live.queue.length ? setTimeout(dripFeed, gap) : 0;
+}
+
+function addFeedRow(r) {
+  const feed = $("live-feed");
+  feed.querySelector(".lf-empty")?.remove();
+  const cat = r.needs_review ? "review" : r.category;
+  const li = document.createElement("li");
+  li.className = `lf-row fresh c-${cat}`;
+  li.innerHTML = `<span class="lf-text">${esc(r.text)}</span><span class="lf-conf">${pct(r.confidence)}</span>
+    <span class="lf-meta"><span class="tag c-${cat}">${esc(r.needs_review ? "Manual review" : catLabel(r.category))}</span>
+      <span>→ ${esc(r.needs_review ? "General Support" : r.department)}</span>${r.priority === "urgent" ? prioBadge("urgent") : ""}
+      <span>row ${fmtNum(r.row)}</span></span>`;
+  feed.prepend(li);
+  while (feed.children.length > 9) feed.lastElementChild.remove();
+}
+
+function liveTick() {
+  let moving = false;
+  LIVE_KEYS.forEach((k) => {
+    const t = live.targets[k] || 0, v = live.shown[k] || 0;
+    live.shown[k] = Math.abs(t - v) < 1 ? t : v + (t - v) * 0.12;
+    if (live.shown[k] !== t) moving = true;
+  });
+  const sum = Math.max(1, ORDER.reduce((a, c) => a + live.shown[c], 0));
+  ORDER.forEach((c) => {
+    $(`lt-n-${c}`).textContent = fmtNum(Math.round(live.shown[c]));
+    $(`lt-b-${c}`).style.width = `${(live.shown[c] / sum) * 100}%`;
+  });
+  $("lb-urgent").textContent = fmtNum(Math.round(live.shown.urgent));
+  $("lb-review").textContent = fmtNum(Math.round(live.shown.review));
+  if (live.running) {
+    $("lb-clock").textContent = `${((performance.now() - live.started) / 1000).toFixed(1)} s`;
+    $("lb-rate").textContent = `${fmtNum(Math.round(live.ema))} msg/s`;
+  }
+  if (live.rates.length !== live.sparkLen) drawSpark();
+  live.raf = moving || live.running ? requestAnimationFrame(liveTick) : 0;
+}
+
+function drawSpark() {
+  live.sparkLen = live.rates.length;
+  const pts = live.rates.slice(-60);
+  if (pts.length < 2) return;
+  const w = 300, h = 56, max = Math.max(...pts) * 1.15;
+  const x = (i) => ((i / (pts.length - 1)) * w).toFixed(1);
+  const y = (v) => (h - 2 - (v / max) * (h - 6)).toFixed(1);
+  const line = pts.map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join("");
+  $("spark-line").setAttribute("d", line);
+  $("spark-area").setAttribute("d", `${line}L${w},${h}L0,${h}Z`);
+}
+
 async function finishJob(job) {
   const s = job.summary;
+  liveUpdate(job);
+  liveFinish(job);
   $("job").classList.add("done");
   setJobStage(`Done: ${fmtNum(s.routed)} messages routed in ${s.seconds}s · model ${job.model_version}`, 1);
   $("batch-btn").disabled = false;
@@ -936,12 +1061,6 @@ async function finishJob(job) {
     + stat(fmtNum(s.urgent), "urgent (fraud)")
     + stat(fmtNum(s.needs_review), "sent to manual review");
   $("job-stats").hidden = false;
-
-  const total = Math.max(1, s.routed);
-  $("job-split").innerHTML = ORDER.filter((c) => s.categories[c])
-    .map((c) => `<div class="split-seg c-${c}" style="flex:${s.categories[c]}" title="${esc(catLabel(c))}: ${fmtNum(s.categories[c])}"></div>`).join("");
-  $("job-legend").innerHTML = ORDER.map((c) => `<span class="c-${c}"><i></i>${esc(catLabel(c))} ${fmtNum(s.categories[c] || 0)} · ${pct(s.categories[c] / total, 1)}</span>`).join("");
-  $("job-split-wrap").hidden = false;
 
   const dl = $("job-download");
   dl.hidden = false;

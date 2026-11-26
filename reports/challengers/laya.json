@@ -1,0 +1,317 @@
+{
+  "challenger": "laya",
+  "label": "Laya (zero-shot)",
+  "checkpoint": "convaiinnovations/laya",
+  "about": "Open-weights decision model (ModernBERT-large, 421M parameters, Apache 2.0). Asked zero-shot which of our five categories each message belongs to, using the taxonomy's descriptions. It was not trained on our data.",
+  "created_at": "2026-11-26T03:13:38+00:00",
+  "test_rows": 999,
+  "full_test_set": false,
+  "classes": [
+    "account",
+    "cards",
+    "fraud",
+    "loans",
+    "payments"
+  ],
+  "production": {
+    "label": "Logistic Regression",
+    "version": "v20261122-164348",
+    "trained_on_our_data": true,
+    "parameters": null,
+    "size_mb": 27.6,
+    "accuracy": 0.97,
+    "macro_f1": 0.9733,
+    "misclassified": 30,
+    "per_class": {
+      "account": {
+        "precision": 0.968,
+        "recall": 0.968,
+        "f1": 0.968,
+        "support": 125
+      },
+      "cards": {
+        "precision": 0.9574,
+        "recall": 0.9733,
+        "f1": 0.9653,
+        "support": 300
+      },
+      "fraud": {
+        "precision": 0.9481,
+        "recall": 0.9733,
+        "f1": 0.9605,
+        "support": 75
+      },
+      "loans": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 35
+      },
+      "payments": {
+        "precision": 0.9803,
+        "recall": 0.9655,
+        "f1": 0.9729,
+        "support": 464
+      }
+    },
+    "confusion_matrix": [
+      [
+        121,
+        2,
+        0,
+        0,
+        2
+      ],
+      [
+        1,
+        292,
+        1,
+        0,
+        6
+      ],
+      [
+        1,
+        0,
+        73,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        35,
+        0
+      ],
+      [
+        2,
+        11,
+        3,
+        0,
+        448
+      ]
+    ],
+    "messages_per_second": 11072.9,
+    "single_message_ms": 2.82
+  },
+  "laya": {
+    "label": "Laya",
+    "version": "convaiinnovations/laya",
+    "trained_on_our_data": false,
+    "parameters": 421000000,
+    "size_mb": 808,
+    "accuracy": 0.6156,
+    "macro_f1": 0.5745,
+    "misclassified": 384,
+    "per_class": {
+      "account": {
+        "precision": 0.8889,
+        "recall": 0.128,
+        "f1": 0.2238,
+        "support": 125
+      },
+      "cards": {
+        "precision": 0.5453,
+        "recall": 0.8433,
+        "f1": 0.6623,
+        "support": 300
+      },
+      "fraud": {
+        "precision": 0.2327,
+        "recall": 0.4933,
+        "f1": 0.3162,
+        "support": 75
+      },
+      "loans": {
+        "precision": 0.9714,
+        "recall": 0.9714,
+        "f1": 0.9714,
+        "support": 35
+      },
+      "payments": {
+        "precision": 0.8514,
+        "recall": 0.5927,
+        "f1": 0.6989,
+        "support": 464
+      }
+    },
+    "confusion_matrix": [
+      [
+        16,
+        75,
+        20,
+        0,
+        14
+      ],
+      [
+        0,
+        253,
+        21,
+        0,
+        26
+      ],
+      [
+        0,
+        31,
+        37,
+        0,
+        7
+      ],
+      [
+        0,
+        0,
+        0,
+        34,
+        1
+      ],
+      [
+        2,
+        105,
+        81,
+        1,
+        275
+      ]
+    ],
+    "messages_per_second": 2.74,
+    "single_message_ms": 63.0,
+    "load_seconds": 7.9
+  },
+  "agreement": 0.6216,
+  "only_ours_right": 364,
+  "only_laya_right": 10,
+  "both_wrong": 20,
+  "examples": {
+    "laya_right_ours_wrong": [
+      {
+        "text": "How much does it cost in fees to use your card?",
+        "truth": "cards",
+        "ours": "payments",
+        "laya": "cards",
+        "ours_confidence": 0.919,
+        "laya_confidence": 0.3427
+      },
+      {
+        "text": "Ordered awhile back, what is the ETA in the US?",
+        "truth": "cards",
+        "ours": "account",
+        "laya": "cards",
+        "ours_confidence": 0.7105,
+        "laya_confidence": 0.2664
+      },
+      {
+        "text": "My card payment did not complete.",
+        "truth": "cards",
+        "ours": "fraud",
+        "laya": "cards",
+        "ours_confidence": 0.6059,
+        "laya_confidence": 0.3001
+      },
+      {
+        "text": "I am concerned about the security in my account and would like to make a dispute.",
+        "truth": "fraud",
+        "ours": "account",
+        "laya": "fraud",
+        "ours_confidence": 0.5274,
+        "laya_confidence": 0.2752
+      },
+      {
+        "text": "im so mad right now. theres several charges that I think my x boyfriend made on my card. the companys on the website wouldn't refund me my money, they told me to contact my bank. DO something please.",
+        "truth": "fraud",
+        "ours": "payments",
+        "laya": "fraud",
+        "ours_confidence": 0.8966,
+        "laya_confidence": 0.4055
+      },
+      {
+        "text": "Can I use this app to change dollars into euros?",
+        "truth": "payments",
+        "ours": "account",
+        "laya": "payments",
+        "ours_confidence": 0.6729,
+        "laya_confidence": 0.2839
+      },
+      {
+        "text": "What can I pay with? Does cash work?",
+        "truth": "payments",
+        "ours": "cards",
+        "laya": "payments",
+        "ours_confidence": 0.9503,
+        "laya_confidence": 0.3541
+      },
+      {
+        "text": "Can I get my paycheck through here?",
+        "truth": "payments",
+        "ours": "cards",
+        "laya": "payments",
+        "ours_confidence": 0.4514,
+        "laya_confidence": 0.3421
+      }
+    ],
+    "ours_right_laya_wrong": [
+      {
+        "text": "I can't recall my passcode and need to reset it.",
+        "truth": "account",
+        "ours": "account",
+        "laya": "cards",
+        "ours_confidence": 0.9982,
+        "laya_confidence": 0.2809
+      },
+      {
+        "text": "Can I verify the source of my funds?",
+        "truth": "account",
+        "ours": "account",
+        "laya": "fraud",
+        "ours_confidence": 0.9999,
+        "laya_confidence": 0.3605
+      },
+      {
+        "text": "Can I hold money in multiple currencies?",
+        "truth": "account",
+        "ours": "account",
+        "laya": "payments",
+        "ours_confidence": 0.9997,
+        "laya_confidence": 0.2914
+      },
+      {
+        "text": "Can I be given a new passcode?",
+        "truth": "account",
+        "ours": "account",
+        "laya": "cards",
+        "ours_confidence": 0.9888,
+        "laya_confidence": 0.2889
+      },
+      {
+        "text": "got married, need to change account name",
+        "truth": "account",
+        "ours": "account",
+        "laya": "payments",
+        "ours_confidence": 0.9985,
+        "laya_confidence": 0.2367
+      },
+      {
+        "text": "I moved.  Where do I update my details?",
+        "truth": "account",
+        "ours": "account",
+        "laya": "cards",
+        "ours_confidence": 0.999,
+        "laya_confidence": 0.2581
+      },
+      {
+        "text": "Please close my account. I am unsatisfied with your service.",
+        "truth": "account",
+        "ours": "account",
+        "laya": "cards",
+        "ours_confidence": 0.9991,
+        "laya_confidence": 0.2333
+      },
+      {
+        "text": "Do I have to do the identity check?",
+        "truth": "account",
+        "ours": "account",
+        "laya": "fraud",
+        "ours_confidence": 0.9999,
+        "laya_confidence": 0.247
+      }
+    ]
+  }
+}

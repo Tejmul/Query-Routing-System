@@ -189,11 +189,26 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg>Download results</a>
         </div>
         <div class="job-bar"><span id="job-bar"></span></div>
-        <div class="job-stats" id="job-stats" hidden></div>
-        <div id="job-split-wrap" hidden>
-          <div class="split" id="job-split"></div>
-          <div class="legend" id="job-legend"></div>
+        <div class="live-board" id="live-board" hidden>
+          <section class="live-feed" aria-label="Messages being routed">
+            <div class="lb-head"><span class="lb-dot" id="lb-dot"></span><b id="lb-title">Routing live</b>
+              <span class="hint">a sample of real messages, the moment each chunk is routed</span></div>
+            <ol id="live-feed"></ol>
+          </section>
+          <section class="live-side" aria-label="Live totals">
+            <div class="lb-head"><b>Messages per team</b><span class="hint mono" id="lb-clock">0.0 s</span></div>
+            <ul class="live-teams" id="live-teams"></ul>
+            <div class="live-flags">
+              <span><b id="lb-urgent">0</b> urgent (fraud)</span>
+              <span><b id="lb-review">0</b> to manual review</span>
+            </div>
+            <div class="lb-head"><b>Speed</b><span class="hint mono" id="lb-rate">0 msg/s</span></div>
+            <svg class="live-spark" id="live-spark" viewBox="0 0 300 56" preserveAspectRatio="none" aria-hidden="true">
+              <path class="spark-area" id="spark-area" d=""></path><path class="spark-line" id="spark-line" d=""></path>
+            </svg>
+          </section>
         </div>
+        <div class="job-stats" id="job-stats" hidden></div>
         <div id="job-preview" hidden>
           <div class="section-head"><h2>First 50 results</h2><span class="hint">The full file has every message</span></div>
           <div class="card table-card"><table>

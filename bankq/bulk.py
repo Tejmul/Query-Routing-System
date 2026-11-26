@@ -221,8 +221,17 @@ def _route_chunk(chunk: pd.DataFrame, router: BulkRouter | None = None):
             rules.update(r.split(";"))
     tallies = {"rows": len(chunk), "routed": len(routed), "urgent": int((routed["priority"] == "urgent").sum()),
                "needs_review": int(routed["needs_review"].sum()),
-               "categories": routed["category"].value_counts().to_dict(), "rules": dict(rules)}
+               "categories": routed["category"].value_counts().to_dict(), "rules": dict(rules),
+               "sample": _sample(routed)}
     return routed.to_csv(header=False, index=False, lineterminator="\n"), tallies
+
+
+def _sample(routed: pd.DataFrame, k=6):
+    """A few evenly spaced, real routed rows from this chunk, for the live view of a running job."""
+    picked = routed.iloc[::max(1, len(routed) // k)].head(k)
+    return [{"row": int(r.row), "text": str(r.text_masked)[:160], "category": r.category, "department": r.department,
+             "priority": r.priority, "confidence": float(r.confidence), "needs_review": bool(r.needs_review),
+             "topic": r.topic, "rules": r.rules} for r in picked.itertuples()]
 
 
 def default_workers():
@@ -247,6 +256,7 @@ def run(input_path, output_path, workers=None, chunk_size=None, text_column=None
 
     counts, rules, start = Counter(), Counter(), time.perf_counter()
     summary = {"rows": 0, "routed": 0, "skipped_empty": 0, "urgent": 0, "needs_review": 0}
+    live = deque(maxlen=60)  # most recent sample rows, numbered so a viewer can tell which are new
 
     def consume(result, writer_state):
         text, t = result
@@ -258,8 +268,10 @@ def run(input_path, output_path, workers=None, chunk_size=None, text_column=None
         summary["needs_review"] += t["needs_review"]
         counts.update(t["categories"])
         rules.update(t["rules"])
+        for row in t["sample"]:
+            live.append({**row, "seq": live[-1]["seq"] + 1 if live else 1})
         if progress:
-            progress(summary["rows"], _finish(summary, counts, rules, start, workers))
+            progress(summary["rows"], {**_finish(summary, counts, rules, start, workers), "live": list(live)})
 
     chunks = iter_chunks(input_path, chunk_size, text_column)
     try:
