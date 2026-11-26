@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Routing Desk</title>
+<style>
+  :root {
+    --ink: #0e1420;
+    --ink-2: #4a5263;
+    --ink-3: #6c7385;
+    --line: #e6e8ed;
+    --surface: #f5f6f8;
+    --payments: #00806a;
+    --cards: #2b4fd8;
+    --loans: #a86b12;
+    --account: #7a3e9d;
+    --fraud: #c81e33;
+  }
+  @page { size: 13.333in 7.5in; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #ffffff; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide {
+    position: relative;
+    width: 13.333in;
+    height: 7.5in;
+    overflow: hidden;
+    background: #ffffff;
+    padding: 56px 72px 64px;
+    display: flex;
+    flex-direction: column;
+    page-break-after: always;
+    break-after: page;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  @media screen {
+    body { background: #d9dce2; }
+    .slide { margin: 24px auto; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
+  }
+
+  .footer {
+    position: absolute; left: 72px; right: 72px; bottom: 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--ink-3); letter-spacing: .02em;
+    border-top: 1px solid var(--line); padding-top: 10px;
+  }
+  .footer .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink-2); }
+  .stripe { display: inline-flex; gap: 2px; }
+  .stripe i { display: block; width: 6px; height: 10px; border-radius: 1px; }
+
+  .kicker {
+    font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-3); margin-bottom: 10px;
+  }
+  h1.headline { font-size: 38px; line-height: 1.15; font-weight: 700; letter-spacing: -.015em; }
+  .sub { font-size: 18px; line-height: 1.45; color: var(--ink-2); margin-top: 10px; max-width: 1000px; }
+  .body { flex: 1; min-height: 0; margin-top: 28px; display: flex; gap: 40px; }
+
+  .card { border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .soft { background: var(--surface); border-radius: 12px; }
+  .muted { color: var(--ink-3); }
+  .ink2 { color: var(--ink-2); }
+  code, .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: .88em; }
+  code { background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+
+  .big { font-size: 64px; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+  .mid { font-size: 40px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+  .label { font-size: 15px; color: var(--ink-2); line-height: 1.4; margin-top: 8px; }
+
+  ul.clean { list-style: none; }
+  ul.clean li { position: relative; padding-left: 20px; font-size: 17px; line-height: 1.45; color: var(--ink-2); margin-bottom: 10px; }
+  ul.clean li::before { content: ""; position: absolute; left: 2px; top: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); }
+  ul.clean li b { color: var(--ink); }
+
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; vertical-align: 1px; }
+  img.fig { display: block; max-width: 100%; height: auto; }
+
+  /* Slide 1 */
+  .title-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .title-wrap h1 { font-size: 88px; font-weight: 800; letter-spacing: -.035em; line-height: 1; }
+  .title-wrap .tag { font-size: 30px; color: var(--ink-2); margin-top: 22px; line-height: 1.3; font-weight: 400; }
+  .title-wrap .tag b { color: var(--ink); font-weight: 700; }
+  .bars { display: flex; gap: 8px; margin: 44px 0 40px; }
+  .bars div { height: 10px; border-radius: 5px; }
+  .authors { font-size: 20px; color: var(--ink); font-weight: 600; }
+  .authors span { color: var(--ink-3); font-weight: 400; padding: 0 10px; }
+  .meta { font-size: 16px; color: var(--ink-3); margin-top: 10px; }
+  .teamchips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .chip { display: inline-flex; align-items: center; font-size: 14px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 100px; padding: 6px 14px; }
+
+  /* Slide 2 */
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .flow .step { flex: 1; padding: 14px 14px; text-align: left; }
+  .flow .step .t { font-size: 16px; font-weight: 700; }
+  .flow .step .d { font-size: 13.5px; color: var(--ink-2); line-height: 1.4; margin-top: 4px; }
+  .flow .arrow { width: 28px; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: 20px; flex: none; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 16px; }
+  table.t th { text-align: left; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  table.t td { padding: 11px 14px; border-bottom: 1px solid var(--line); color: var(--ink); }
+  table.t tr:last-child td { border-bottom: none; }
+  table.t td.num, table.t th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; font-size: 12.5px; font-weight: 700; border-radius: 100px; padding: 3px 10px; letter-spacing: .02em; }
+  .p-urgent { background: #fbe9eb; color: var(--fraud); }
+  .p-high { background: #fdf3e3; color: #8a560c; }
+  .p-normal { background: var(--surface); color: var(--ink-2); }
+
+  /* Slide 5 */
+  .pipeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; position: relative; }
+  .pipeline .pc { padding: 20px 16px 22px; position: relative; display: flex; flex-direction: column; }
+  .pipeline .n { width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .pipeline .pt { font-size: 19px; font-weight: 700; margin-top: 14px; line-height: 1.25; }
+  .pipeline .pd { font-size: 15px; color: var(--ink-2); line-height: 1.45; margin-top: 8px; }
+  .pipeline .pc:not(:last-child)::after {
+    content: ""; position: absolute; right: -12px; top: 34px; width: 10px; height: 10px;
+    border-top: 2px solid var(--ink-3); border-right: 2px solid var(--ink-3); transform: rotate(45deg);
+  }
+  .rail { height: 2px; background: var(--line); margin: 0 0 -1px; }
+
+  /* Laya slides */
+  .spec { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .spec .s { padding: 14px 16px; }
+  .spec .s .v { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .spec .s .k { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+  .steps4 { display: flex; flex-direction: column; gap: 10px; }
+  .steps4 .r { display: flex; gap: 14px; align-items: flex-start; padding: 12px 16px; }
+  .steps4 .r .n { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--ink); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .steps4 .r .tx { font-size: 15.5px; line-height: 1.4; color: var(--ink-2); }
+  .steps4 .r .tx b { color: var(--ink); }
+  .quote { border-left: 4px solid var(--ink); padding: 14px 18px; background: var(--surface); border-radius: 0 10px 10px 0; font-size: 19px; font-weight: 600; line-height: 1.35; }
+  .badge-off { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--fraud); background: #fbe9eb; border-radius: 100px; padding: 6px 14px; }
+  .badge-off::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--fraud); }
+
+  /* Slide 10 */
+  .cols3 { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 20px; }
+  .cols3 .col { padding: 24px 24px 14px; }
+  .cols3 h3 { font-size: 19px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .cols3 h3 .ic { width: 28px; height: 28px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .cols3 ul.clean li { font-size: 17px; margin-bottom: 12px; }
+  .limit { margin-top: 22px; display: flex; align-items: center; gap: 16px; padding: 14px 20px; border: 1px solid var(--line); border-left: 4px solid var(--loans); border-radius: 0 10px 10px 0; font-size: 17px; color: var(--ink-2); line-height: 1.4; }
+  .limit b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ============ 1. TITLE ============ -->
+<section class="slide">
+  <div class="title-wrap">
+    <div class="kicker">NLP project review</div>
+    <h1>Routing Desk</h1>
+    <div class="tag">From <b>1,000</b> to <b>1,000,000+</b> banking messages:<br>read each customer message and send it to the right team.</div>
+    <div class="bars">
+      <div style="width:120px;background:var(--payments)"></div>
+      <div style="width:120px;background:var(--cards)"></div>
+      <div style="width:120px;background:var(--loans)"></div>
+      <div style="width:120px;background:var(--account)"></div>
+      <div style="width:120px;background:var(--fraud)"></div>
+    </div>
+    <div class="authors">Tejmul Movin<span>·</span>Samarth Sekhar<span>·</span>Meenaksh Singhania<span>·</span>Prerak Arya</div>
+    <div class="teamchips">
+      <span class="chip"><i class="dot" style="background:var(--payments)"></i>Payments</span>
+      <span class="chip"><i class="dot" style="background:var(--cards)"></i>Cards</span>
+      <span class="chip"><i class="dot" style="background:var(--loans)"></i>Loans</span>
+      <span class="chip"><i class="dot" style="background:var(--account)"></i>Account issues</span>
+      <span class="chip"><i class="dot" style="background:var(--fraud)"></i>Fraud</span>
+    </div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>1 / 10</span></div>
+</section>
+
+<!-- ============ 2. PROBLEM ============ -->
+<section class="slide">
+  <div class="kicker">The problem</div>
+  <h1 class="headline">Every customer message must reach the right team, fast</h1>
+  <div class="sub">A bank receives messages in plain words. Routing Desk reads each one, picks one of five categories and sends it to the team that owns it, with a priority and a deadline (SLA).</div>
+
+  <div class="body" style="flex-direction:column; gap:22px;">
+    <div class="flow">
+      <div class="step card"><div class="t">1 · Message arrives</div><div class="d">Free text from the customer</div></div>
+      <div class="arrow">→</div>
+      <div class="step card"><div class="t">2 · Mask private data</div><div class="d">Card numbers, phone numbers, emails hidden first</div></div>
+      <div class="arrow">→</div>
+      <div class="step card"><div class="t">3 · Model reads it</div><div class="d">Category, plus one of 83 finer topics</div></div>
+      <div class="arrow">→</div>
+      <div class="step card"><div class="t">4 · Safety rules</div><div class="d">Fraud phrases always escalate; priority and SLA set</div></div>
+      <div class="arrow">→</div>
+      <div class="step card"><div class="t">5 · Team or review</div><div class="d">Unsure? Sent to General Support (manual review)</div></div>
+    </div>
+
+    <div class="card" style="overflow:hidden;">
+      <table class="t">
+        <thead><tr><th>Category</th><th>Team</th><th>Default priority</th><th class="num">SLA</th></tr></thead>
+        <tbody>
+          <tr><td><i class="dot" style="background:var(--payments)"></i><b>Payments</b></td><td>Payments &amp; Transfers Desk</td><td><span class="pill p-high">high</span></td><td class="num">8 h</td></tr>
+          <tr><td><i class="dot" style="background:var(--cards)"></i><b>Cards</b></td><td>Card Services</td><td><span class="pill p-normal">normal</span></td><td class="num">24 h</td></tr>
+          <tr><td><i class="dot" style="background:var(--loans)"></i><b>Loans</b></td><td>Lending Team</td><td><span class="pill p-normal">normal</span></td><td class="num">48 h</td></tr>
+          <tr><td><i class="dot" style="background:var(--account)"></i><b>Account issues</b></td><td>Account Services</td><td><span class="pill p-normal">normal</span></td><td class="num">24 h</td></tr>
+          <tr><td><i class="dot" style="background:var(--fraud)"></i><b>Fraud</b></td><td>Fraud &amp; Security Team</td><td><span class="pill p-urgent">urgent</span></td><td class="num">1 h</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>2 / 10</span></div>
+</section>
+
+<!-- ============ 3. MODEL ============ -->
+<section class="slide">
+  <div class="kicker">The model</div>
+  <h1 class="headline">A simple, fast model that gets 97.34% right</h1>
+  <div class="sub">TF-IDF turns words and letter patterns into numbers; Logistic Regression picks the category. Trained on 10,519 messages (Banking77 plus generated loan queries), tested on 3,192 messages it never saw.</div>
+
+  <div class="body">
+    <div style="width:420px; flex:none; display:flex; flex-direction:column; gap:14px; justify-content:center;">
+      <div class="soft" style="padding:22px 24px;">
+        <div class="big">97.34%</div>
+        <div class="label">accuracy on <b>3,192</b> unseen test messages</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="card" style="padding:18px 20px;">
+          <div class="mid">0.9739</div>
+          <div class="label">macro F1 (all five categories weighted equally)</div>
+        </div>
+        <div class="card" style="padding:18px 20px; border-left:4px solid var(--fraud);">
+          <div class="mid">230<span style="font-size:22px; color:var(--ink-3); font-weight:600;"> / 240</span></div>
+          <div class="label">fraud messages caught</div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+      <img class="fig" src="figures/model_selection.png" alt="Model selection: cross-validation macro F1 of four candidate models">
+      <div class="muted" style="font-size:14px; margin-top:10px; line-height:1.45;">Four candidates compared with 5-fold cross-validation. Logistic Regression (C = 20) scored best and is used in production.</div>
+    </div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>3 / 10</span></div>
+</section>
+
+<!-- ============ 4. LIMIT ============ -->
+<section class="slide">
+  <div class="kicker">Where the last phase stopped</div>
+  <h1 class="headline">The old system could not handle a big file</h1>
+  <div class="sub">The model was good. The way messages were fed to it was the bottleneck.</div>
+
+  <div class="body" style="flex-direction:column; gap:36px; margin-top:34px;">
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:18px;">
+      <div class="soft" style="padding:28px 28px;">
+        <div class="big" style="font-size:72px;">1,000</div>
+        <div class="label">messages per request, at most. Larger uploads were refused (HTTP 413).</div>
+      </div>
+      <div class="soft" style="padding:28px 28px;">
+        <div class="big" style="font-size:72px;">~153</div>
+        <div class="label">messages per second, handled one message at a time.</div>
+      </div>
+      <div class="soft" style="padding:28px 28px;">
+        <div class="big" style="font-size:72px;">~1.8 h</div>
+        <div class="label">to route 1,000,000 messages at that speed.</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:15px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin-bottom:12px;">Four reasons it was slow</div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px;">
+        <div class="card" style="padding:20px 22px; border-top:3px solid var(--ink);"><div style="font-size:19px; font-weight:700;">Work done twice</div><div class="label" style="font-size:16px; margin-top:10px;">Text features computed twice per message (category and topic separately).</div></div>
+        <div class="card" style="padding:20px 22px; border-top:3px solid var(--ink);"><div style="font-size:19px; font-weight:700;">Rules one by one</div><div class="label" style="font-size:16px; margin-top:10px;">Routing rules applied one message at a time in Python.</div></div>
+        <div class="card" style="padding:20px 22px; border-top:3px solid var(--ink);"><div style="font-size:19px; font-weight:700;">A ticket each</div><div class="label" style="font-size:16px; margin-top:10px;">A database ticket created for every single message.</div></div>
+        <div class="card" style="padding:20px 22px; border-top:3px solid var(--ink);"><div style="font-size:19px; font-weight:700;">Request held open</div><div class="label" style="font-size:16px; margin-top:10px;">The whole web request stayed open until every message was done.</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>4 / 10</span></div>
+</section>
+
+<!-- ============ 5. WHAT WE CHANGED ============ -->
+<section class="slide">
+  <div class="kicker">What we changed</div>
+  <h1 class="headline">A bulk engine: big file in, routed CSV out</h1>
+  <div class="sub">The file is processed in the background, in large chunks, by every CPU core at once.</div>
+
+  <div class="body" style="flex-direction:column; gap:30px; margin-top:32px;">
+    <div class="pipeline">
+      <div class="pc card"><div class="n">1</div><div class="pt">Upload once</div><div class="pd">The file becomes a background job. You get a job id and can follow progress.</div></div>
+      <div class="pc card"><div class="n">2</div><div class="pt">Chunks of 20,000</div><div class="pd">Read from disk 20,000 rows at a time, so the file is never fully in memory.</div></div>
+      <div class="pc card"><div class="n">3</div><div class="pt">One pass per chunk</div><div class="pd">Text features computed once; category and topic both use them.</div></div>
+      <div class="pc card"><div class="n">4</div><div class="pt">Rules on the whole chunk</div><div class="pd">Rules run as array maths (NumPy). A test proves the decisions are exactly the same.</div></div>
+      <div class="pc card"><div class="n">5</div><div class="pt">8 parallel workers</div><div class="pd">One process per CPU core; each loads the model once.</div></div>
+      <div class="pc card" style="background:var(--ink); border-color:var(--ink);"><div class="n" style="background:#fff; color:var(--ink);">6</div><div class="pt" style="color:#fff;">CSV + live samples</div><div class="pd" style="color:#c9cdd6;">Results download as CSV. Each chunk sends 6 real routed rows to the screen.</div></div>
+    </div>
+
+    <div>
+      <div style="font-size:15px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin-bottom:12px;">Where the speed comes from</div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div class="soft" style="padding:16px 20px; font-size:17px; color:var(--ink-2); line-height:1.4;"><b style="color:var(--ink)">Features once</b>, not twice</div>
+        <div class="soft" style="padding:16px 20px; font-size:17px; color:var(--ink-2); line-height:1.4;"><b style="color:var(--ink)">Array maths per chunk</b>, not per message</div>
+        <div class="soft" style="padding:16px 20px; font-size:17px; color:var(--ink-2); line-height:1.4;"><b style="color:var(--ink)">8 cores</b> instead of 1</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>5 / 10</span></div>
+</section>
+
+<!-- ============ 6. RESULTS ============ -->
+<section class="slide">
+  <div class="kicker">Results</div>
+  <h1 class="headline">1,000,000 messages routed in 19.3 seconds</h1>
+  <div class="sub">Measured on an Apple M2 laptop. Same model, same accuracy: still 97.34%.</div>
+
+  <div class="body">
+    <div style="width:400px; flex:none; display:flex; flex-direction:column; gap:14px;">
+      <div class="soft" style="padding:22px 24px;">
+        <div class="big">19.3 s</div>
+        <div class="label">for 1,000,000 messages, down from <b style="white-space:nowrap">about 1.8 hours</b></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="card" style="padding:16px 18px;"><div class="mid" style="font-size:32px;">13,120</div><div class="label">msg/s on 1 core</div></div>
+        <div class="card" style="padding:16px 18px;"><div class="mid" style="font-size:32px;">51,799</div><div class="label">msg/s with 8 workers</div></div>
+      </div>
+      <div class="muted" style="font-size:14px; line-height:1.45;">8 workers give about 4×, not 8×: four of the M2's eight cores are slower efficiency cores.</div>
+    </div>
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+      <img class="fig" src="figures/throughput.png" alt="Throughput: 153 before, 13,120 on 1 core, 51,799 with 8 workers">
+    </div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>6 / 10</span></div>
+</section>
+
+<!-- ============ 7. UI ============ -->
+<section class="slide">
+  <div class="kicker">The new interface</div>
+  <h1 class="headline">Watch a file being routed, live</h1>
+  <div class="sub" style="max-width:1140px;">On the Bulk routing page, real routed messages flow from your file through a network into five team bins, with live counters.</div>
+
+  <div class="body" style="flex-direction:column; gap:12px; margin-top:16px;">
+    <div class="card" style="padding:8px;">
+      <img class="fig" src="figures/ui_bulk_live.png" alt="Bulk routing page mid-run" style="width:100%; border-radius:6px;">
+    </div>
+    <div style="display:flex; gap:24px; align-items:flex-start;">
+      <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; flex:1;">
+        <div class="soft" style="padding:10px 12px;"><div style="font-weight:700; font-size:15px;">Route</div><div class="muted" style="font-size:12.5px; margin-top:3px; line-height:1.35;">One message, live</div></div>
+        <div class="soft" style="padding:10px 12px; outline:2px solid var(--ink);"><div style="font-weight:700; font-size:15px;">Bulk routing</div><div class="muted" style="font-size:12.5px; margin-top:3px; line-height:1.35;">A file of any size</div></div>
+        <div class="soft" style="padding:10px 12px;"><div style="font-weight:700; font-size:15px;">Inbox</div><div class="muted" style="font-size:12.5px; margin-top:3px; line-height:1.35;">Tickets and notes</div></div>
+        <div class="soft" style="padding:10px 12px;"><div style="font-weight:700; font-size:15px;">Analytics</div><div class="muted" style="font-size:12.5px; margin-top:3px; line-height:1.35;">Traffic overview</div></div>
+        <div class="soft" style="padding:10px 12px;"><div style="font-weight:700; font-size:15px;">Model</div><div class="muted" style="font-size:12.5px; margin-top:3px; line-height:1.35;">Scores and versions</div></div>
+        <div class="soft" style="padding:10px 12px;"><div style="font-weight:700; font-size:15px;">Laya</div><div class="muted" style="font-size:12.5px; margin-top:3px; line-height:1.35;">Challenger, time only</div></div>
+      </div>
+      <div style="width:330px; flex:none; font-size:13.5px; color:var(--ink-2); line-height:1.45; border-left:3px solid var(--line); padding-left:14px;">The network is a <b style="color:var(--ink)">picture of the computation</b>. The real model is TF-IDF + Logistic Regression, with no hidden layers.</div>
+    </div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>7 / 10</span></div>
+</section>
+
+<!-- ============ 8. LAYA ============ -->
+<section class="slide">
+  <div class="kicker">A challenger model</div>
+  <h1 class="headline">Laya: an open decision model we plugged in to compare</h1>
+  <div class="sub">You give Laya a message and a typed question; it returns a probability for every option in one pass. It never writes text.</div>
+
+  <div class="body">
+    <div style="width:500px; flex:none; display:flex; flex-direction:column; gap:12px;">
+      <div class="spec">
+        <div class="s soft"><div class="v">ModernBERT-large</div><div class="k">encoder + decision head</div></div>
+        <div class="s soft"><div class="v">421M</div><div class="k">parameters</div></div>
+        <div class="s soft"><div class="v">808 MB</div><div class="k">model size</div></div>
+        <div class="s soft"><div class="v">Apache 2.0</div><div class="k">open weights</div></div>
+      </div>
+      <div class="card" style="padding:12px 16px; font-size:15px; color:var(--ink-2);">By NandhaKishorM / Convai Innovations · <span class="mono" style="color:var(--ink);">github.com/nandhakishorm/laya</span></div>
+      <div style="margin-top:6px;">
+        <div style="font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin-bottom:8px;">The one question we ask it</div>
+        <div class="quote">“Which banking team should handle this customer message?”</div>
+        <div class="muted" style="font-size:14px; margin-top:8px; line-height:1.4;">Options: our five categories, each with a one-line description. Asked zero-shot (not trained on our data).</div>
+      </div>
+    </div>
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:10px;">
+      <div style="font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3);">How we integrated it</div>
+      <div class="steps4">
+        <div class="r card"><div class="n">1</div><div class="tx"><b>Adapter</b>: <code>bankq/ml/laya_challenger.py</code> turns a message into Laya's question format (optional install).</div></div>
+        <div class="r card"><div class="n">2</div><div class="tx"><b>Comparison script</b>: <code>bankq/ml/laya_eval.py</code> times both models side by side.</div></div>
+        <div class="r card"><div class="n">3</div><div class="tx"><b>API</b>: <code>GET /api/v1/model/challengers</code> serves the results.</div></div>
+        <div class="r card"><div class="n">4</div><div class="tx"><b>UI page</b>: <code>/laya</code> shows the comparison.</div></div>
+      </div>
+      <div style="margin-top:6px;"><span class="badge-off">Switched off: Laya never routes a message</span></div>
+    </div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>8 / 10</span></div>
+</section>
+
+<!-- ============ 9. LAYA TIME ============ -->
+<section class="slide">
+  <div class="kicker">Laya vs our model: time only</div>
+  <h1 class="headline">In the time Laya routes one message, we route about 4,000</h1>
+  <div class="sub">Measured on an Apple M2 laptop, with Laya running on the M2 GPU.</div>
+
+  <div class="body" style="flex-direction:column; gap:14px; margin-top:18px;">
+    <div style="display:flex; justify-content:center;">
+      <img class="fig" src="figures/laya_time.png" alt="Routing time: our model vs Laya for one message, start-up and 1,000,000 messages" style="width:900px;">
+    </div>
+    <div class="card" style="overflow:hidden;">
+      <table class="t" style="font-size:16px;">
+        <thead><tr><th></th><th class="num">One message</th><th class="num">Throughput</th><th class="num">1,000,000 messages</th><th class="num">Start-up</th><th class="num">Size</th></tr></thead>
+        <tbody>
+          <tr><td><i class="dot" style="background:var(--ink)"></i><b>Our model</b></td><td class="num"><b>2.8 ms</b></td><td class="num"><b>11,073 msg/s</b></td><td class="num"><b>19.3 s</b></td><td class="num"><b>1.6 s</b></td><td class="num"><b>27.6 MB</b></td></tr>
+          <tr><td><i class="dot" style="background:#9aa3b5"></i>Laya</td><td class="num">63 ms <span class="muted">(22× longer)</span></td><td class="num">2.74 msg/s</td><td class="num">≈ 4.2 days</td><td class="num">7.9 s</td><td class="num">808 MB</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="muted" style="font-size:13px; line-height:1.4;">Throughput: our model scoring on 1 CPU core. 1,000,000 messages: our bulk engine with 8 workers; Laya at 2.74 msg/s. 11,073 ÷ 2.74 ≈ 4,041, so about 4,000.</div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>9 / 10</span></div>
+</section>
+
+<!-- ============ 10. CONCLUSION ============ -->
+<section class="slide">
+  <div class="kicker">Conclusion</div>
+  <h1 class="headline">Keep TF-IDF for traffic; add decision models where they help</h1>
+
+  <div class="body" style="flex-direction:column; gap:0; margin-top:24px;">
+    <div class="cols3">
+      <div class="col card">
+        <h3><span class="ic">1</span>Why TF-IDF stays</h3>
+        <ul class="clean">
+          <li>Five fixed teams and plenty of labelled data: the right tool.</li>
+          <li><b>Fast</b>: seconds for 1,000,000 messages, not days.</li>
+          <li><b>Small</b>: 27.6 MB on any CPU, vs 808 MB with a GPU recommended.</li>
+          <li><b>Explainable</b>: shows the words behind each decision.</li>
+        </ul>
+      </div>
+      <div class="col card">
+        <h3><span class="ic">2</span>Why decision models still matter</h3>
+        <ul class="clean">
+          <li><b>New teams or new questions</b> at request time, without retraining: just add an option.</li>
+          <li><b>Several decisions in one pass</b>: team, urgency, “is the customer threatening to leave?”, “is a refund requested?”.</li>
+          <li><b>Calibrated probabilities</b>: it can abstain and say “not sure”.</li>
+          <li><b>100+ languages</b> with its multilingual checkpoint.</li>
+        </ul>
+      </div>
+      <div class="col soft">
+        <h3><span class="ic">3</span>Next steps</h3>
+        <ul class="clean">
+          <li><b>TF-IDF</b> handles the bulk of traffic.</li>
+          <li>A <b>decision model as a second opinion</b> only on the small share of low-confidence messages, where its time cost is affordable.</li>
+          <li><b>Fine-tune a transformer</b> on our data next, for a fair comparison.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="limit"><b style="flex:none;">Honest limit</b><span>1,000,000 messages in a file is not 1,000,000 users at once. That would need several servers, a load balancer and a queue.</span></div>
+  </div>
+  <div class="footer"><span class="brand"><span class="stripe"><i style="background:var(--payments)"></i><i style="background:var(--cards)"></i><i style="background:var(--loans)"></i><i style="background:var(--account)"></i><i style="background:var(--fraud)"></i></span>Routing Desk</span><span>10 / 10</span></div>
+</section>
+
+</body>
+</html>
