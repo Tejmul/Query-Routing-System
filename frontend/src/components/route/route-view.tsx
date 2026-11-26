@@ -6,7 +6,7 @@ import { useApp } from "@/components/app-provider";
 import { Panel } from "@/components/page-head";
 import { AnimatedNumber } from "@/components/animated-number";
 import { api, send } from "@/lib/api";
-import { capital, clock, pct, pctSoft } from "@/lib/format";
+import { capital, clock, pct, pctSoft, slaText } from "@/lib/format";
 import type { Category, Decision } from "@/lib/types";
 import { evidence, NeuralNet } from "./neural-net";
 
@@ -232,7 +232,7 @@ function DecisionCards({ d, label, reviewDept }: { d: Decision; label: (c: strin
             </>}
           </dd>
           <dt className="text-ink-3">Respond by</dt>
-          <dd className="font-medium">{d.sla_hours < 1 ? `${d.sla_hours * 60} min` : `${d.sla_hours} h`} · by {clock(d.due_at)}</dd>
+          <dd className="font-medium">{slaText(d.sla_hours)} · by {clock(d.due_at)}</dd>
           <dt className="text-ink-3">Also about</dt>
           <dd className="font-medium">{d.secondary_category ? `${label(d.secondary_category)} (${pct(d.probabilities[d.secondary_category as Category])})` : "None"}</dd>
         </dl>
