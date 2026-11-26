@@ -6,7 +6,8 @@ import { useApp } from "@/components/app-provider";
 import { Panel } from "@/components/page-head";
 import { AnimatedNumber } from "@/components/animated-number";
 import { api, send } from "@/lib/api";
-import { capital, clock, pct, pctSoft } from "@/lib/format";
+import { ruleName } from "@/lib/labels";
+import { capital, clock, pct, pctSoft, slaText } from "@/lib/format";
 import type { Category, Decision } from "@/lib/types";
 import { evidence, NeuralNet } from "./neural-net";
 
@@ -18,10 +19,6 @@ const SAMPLES = [
   "My father passed away, close his account",
   "Card 4539 1488 0343 6467 is blocked",
 ];
-const RULE_NAMES: Record<string, string> = {
-  fraud_escalation: "Fraud escalation", low_confidence: "Manual review", vulnerable_customer: "Vulnerable customer",
-  formal_complaint: "Formal complaint", account_takeover: "Account takeover",
-};
 const PII_NAMES: Record<string, string> = { CARD: "card number", ACCOUNT: "account number", IBAN: "IBAN", SORT_CODE: "sort code", EMAIL: "email", PHONE: "phone" };
 const CHANNELS = [["app", "Mobile app"], ["web", "Web"], ["chat", "Live chat"], ["email", "Email"], ["phone", "Phone"], ["branch", "Branch"]];
 
@@ -32,12 +29,19 @@ export function RouteView() {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [state, setState] = useState<{ kind: "idle" | "busy" | "live" | "saved" | "error"; msg?: string }>({ kind: "idle" });
   const [created, setCreated] = useState(false);
+  const [creating, setCreating] = useState(false);
   const ctrl = useRef<AbortController | null>(null);
   const seq = useRef(0);
 
   const classify = useCallback(async (value: string) => {
-    if (value.trim().length < 3) { setDecision(null); setState({ kind: "idle" }); return; }
     ctrl.current?.abort();
+    if (value.trim().length < 3) {
+      // Invalidate any reply still in flight so it can't bring back a decision for old text.
+      seq.current++;
+      setDecision(null);
+      setState({ kind: "idle" });
+      return;
+    }
     ctrl.current = new AbortController();
     const mine = ++seq.current;
     setState({ kind: "busy" });
@@ -58,6 +62,8 @@ export function RouteView() {
   }, [text, classify]);
 
   async function createTicket() {
+    if (creating || created) return;
+    setCreating(true);
     try {
       const d = await send<Decision>("/api/v1/classify", "POST", { text, channel });
       setDecision(d);
@@ -67,6 +73,8 @@ export function RouteView() {
       toast(`${d.ticket_ref} created for ${d.department}`, { label: "Open", href: `/inbox?ticket=${d.ticket_ref}` });
     } catch (err) {
       setState({ kind: "error", msg: (err as Error).message });
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -74,7 +82,7 @@ export function RouteView() {
     { key: "pii", title: "Mask", text: decision.pii_redacted.length ? `${decision.pii_redacted.length} item${decision.pii_redacted.length > 1 ? "s" : ""} masked` : "Nothing to mask", flag: false },
     { key: "cat", title: "Classify", text: `${label(decision.model_category)} · ${pct(decision.probabilities[decision.model_category])}`, flag: false },
     { key: "topic", title: "Topic", text: decision.intent?.label ?? "Not found", flag: false },
-    { key: "rules", title: "Rules", text: decision.rules_applied.length ? decision.rules_applied.map((r) => RULE_NAMES[r.rule] ?? r.rule).join(", ") : "None triggered",
+    { key: "rules", title: "Rules", text: decision.rules_applied.length ? decision.rules_applied.map((r) => ruleName(r.rule)).join(", ") : "None triggered",
       flag: decision.rules_applied.some((r) => r.rule !== "low_confidence") },
   ] : [
     { key: "pii", title: "Mask", text: "personal data", flag: false },
@@ -111,7 +119,7 @@ export function RouteView() {
             <select aria-label="Channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="input h-10 cursor-pointer px-2.5">
               {CHANNELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
-            <button type="button" onClick={createTicket} disabled={!decision || created} className="btn btn-primary h-10 flex-1">
+            <button type="button" onClick={createTicket} disabled={!decision || created || creating} className="btn btn-primary h-10 flex-1">
               {created ? (
                 <><svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>Ticket created</>
               ) : (
@@ -221,7 +229,7 @@ function DecisionCards({ d, label, reviewDept }: { d: Decision; label: (c: strin
             </>}
           </dd>
           <dt className="text-ink-3">Respond by</dt>
-          <dd className="font-medium">{d.sla_hours < 1 ? `${d.sla_hours * 60} min` : `${d.sla_hours} h`} · by {clock(d.due_at)}</dd>
+          <dd className="font-medium">{slaText(d.sla_hours)} · by {clock(d.due_at)}</dd>
           <dt className="text-ink-3">Also about</dt>
           <dd className="font-medium">{d.secondary_category ? `${label(d.secondary_category)} (${pct(d.probabilities[d.secondary_category as Category])})` : "None"}</dd>
         </dl>
@@ -241,7 +249,7 @@ function DecisionCards({ d, label, reviewDept }: { d: Decision; label: (c: strin
           {d.rules_applied.map((r) => (
             <li key={r.rule} className="flex gap-2 rounded-lg bg-surface-2 px-2.5 py-2 text-xs text-ink-2"
               style={{ boxShadow: `inset 3px 0 0 ${r.rule === "low_confidence" ? "var(--review)" : "var(--fraud)"}` }}>
-              <b className="whitespace-nowrap text-ink">{RULE_NAMES[r.rule] ?? r.rule}</b>{r.detail}
+              <b className="whitespace-nowrap text-ink">{ruleName(r.rule)}</b>{r.detail}
             </li>
           ))}
         </ul>
@@ -272,11 +280,13 @@ interface ModelCard {
 
 function Hero() {
   const [card, setCard] = useState<ModelCard | null>(null);
-  useEffect(() => { api<ModelCard>("/api/v1/model").then(setCard).catch(() => {}); }, []);
-  const fraud = card?.metrics.category.per_class.fraud;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { api<ModelCard>("/api/v1/model").then(setCard).catch(() => setFailed(true)); }, []);
+  const fraud = card?.metrics.category.per_class?.fraud;
+  // A model card without a fraud class (or an older format) just skips that tile instead of crashing.
   const stats = card ? [
     { v: card.metrics.category.accuracy * 100, suffix: "%", d: 1, l: `right team, on ${card.data.test_rows.toLocaleString()} unseen messages` },
-    { v: Math.round(fraud!.recall * fraud!.support), suffix: ` / ${fraud!.support}`, d: 0, l: "fraud reports caught" },
+    ...(fraud ? [{ v: Math.round(fraud.recall * fraud.support), suffix: ` / ${fraud.support}`, d: 0, l: "fraud reports caught" }] : []),
     { v: card.metrics.intent.n_intents, suffix: " topics", d: 0, l: `exact topic ${(card.metrics.intent.accuracy * 100).toFixed(1)}% of the time` },
     { v: 1000000, suffix: "", d: 0, l: "messages routed in 19.3 s on one laptop" },
   ] : [];
@@ -289,7 +299,7 @@ function Hero() {
         </h1>
       </motion.div>
       <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4 lg:grid-cols-2 lg:pb-1 xl:w-[440px]">
-        {(stats.length ? stats : Array.from({ length: 4 }, () => null)).map((st, i) => (
+        {(stats.length ? stats : failed ? [] : Array.from({ length: 4 }, () => null)).map((st, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.06, duration: 0.4 }}
             className="border-l border-line-strong pl-3.5">
             {st ? (

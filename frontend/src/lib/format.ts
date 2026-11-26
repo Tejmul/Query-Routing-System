@@ -33,3 +33,9 @@ export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const topicLabel = (intent: string | null) =>
   intent ? capital(intent.replace(/_/g, " ").replace(/\?$/, "").trim().toLowerCase()) : "–";
+
+/** Response window in whole minutes or hours: 0.5 → "30 min", 4 → "4 h", 1.5 → "1.5 h". */
+export function slaText(hours: number) {
+  if (hours < 1) return `${Math.round(hours * 60)} min`;
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} h`;
+}

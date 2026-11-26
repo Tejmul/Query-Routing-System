@@ -1,18 +1,15 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { Panel, PageHead } from "@/components/page-head";
 import { api, send } from "@/lib/api";
+import { ruleName } from "@/lib/labels";
 import { capital, clock, dueText, pct, relTime, topicLabel } from "@/lib/format";
 import { ORDER, type Ticket } from "@/lib/types";
 
 const STATUS_LABEL = { open: "Open", in_progress: "In progress", resolved: "Resolved" } as const;
-const RULE_NAMES: Record<string, string> = {
-  fraud_escalation: "Fraud escalation", low_confidence: "Manual review", vulnerable_customer: "Vulnerable customer",
-  formal_complaint: "Formal complaint", account_takeover: "Account takeover",
-};
 
 export function InboxView() {
   const { taxonomy, label, refreshBadge, toast } = useApp();
@@ -27,6 +24,8 @@ export function InboxView() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [error, setError] = useState("");
+  const [loadingMore, setLoadingMore] = useState(false);
+  const latestFetch = useRef<typeof fetchPage | null>(null);
 
   useEffect(() => { const t = setTimeout(() => setQuery(q.trim()), 250); return () => clearTimeout(t); }, [q]);
 
@@ -43,20 +42,39 @@ export function InboxView() {
   // First page whenever the filters change; a newer request wins over a slower older one.
   useEffect(() => {
     let current = true;
+    latestFetch.current = fetchPage;
     fetchPage(1)
-      .then((r) => { if (current) { setTotal(r.total); setItems(r.items); setPage(1); } })
+      .then((r) => { if (current) { setError(""); setTotal(r.total); setItems(r.items); setPage(1); } })
       .catch((err) => current && setError((err as Error).message));
     return () => { current = false; };
   }, [fetchPage]);
 
+  // One page at a time, and a page fetched for old filters is dropped instead of appended.
   function loadMore() {
-    fetchPage(page + 1)
-      .then((r) => { setTotal(r.total); setItems((prev) => [...prev, ...r.items]); setPage(page + 1); })
-      .catch((err) => setError((err as Error).message));
+    if (loadingMore) return;
+    const source = fetchPage;
+    setLoadingMore(true);
+    source(page + 1)
+      .then((r) => {
+        if (latestFetch.current !== source) return;
+        setTotal(r.total);
+        setItems((prev) => {
+          const seen = new Set(prev.map((t) => t.ref));
+          return [...prev, ...r.items.filter((t) => !seen.has(t.ref))];
+        });
+        setPage(page + 1);
+      })
+      .catch((err) => setError((err as Error).message))
+      .finally(() => setLoadingMore(false));
   }
 
+  // Clicking through tickets quickly: only the last click is shown, whatever order replies arrive in.
+  const openSeq = useRef(0);
   const open = useCallback((ref: string) => {
-    api<Ticket>(`/api/v1/tickets/${ref}`).then(setSelected).catch((err) => setError((err as Error).message));
+    const mine = ++openSeq.current;
+    api<Ticket>(`/api/v1/tickets/${encodeURIComponent(ref)}`)
+      .then((t) => { if (mine === openSeq.current) setSelected(t); })
+      .catch((err) => { if (mine === openSeq.current) setError((err as Error).message); });
   }, []);
 
   // Opened from a toast link: /inbox?ticket=TKT-000123
@@ -64,13 +82,13 @@ export function InboxView() {
     const ref = new URLSearchParams(window.location.search).get("ticket");
     if (!ref) return;
     let current = true;
-    api<Ticket>(`/api/v1/tickets/${ref}`).then((t) => current && setSelected(t)).catch((err) => current && setError((err as Error).message));
+    api<Ticket>(`/api/v1/tickets/${encodeURIComponent(ref)}`).then((t) => current && setSelected(t)).catch((err) => current && setError((err as Error).message));
     return () => { current = false; };
   }, []);
 
   async function patch(body: Record<string, unknown>, message?: string) {
     if (!selected) return;
-    const updated = await send<Ticket>(`/api/v1/tickets/${selected.ref}`, "PATCH", { actor: "you", ...body });
+    const updated = await send<Ticket>(`/api/v1/tickets/${encodeURIComponent(selected.ref)}`, "PATCH", { actor: "you", ...body });
     setSelected(updated);
     setItems((list) => list.map((t) => (t.ref === updated.ref ? updated : t)));
     refreshBadge();
@@ -129,7 +147,7 @@ export function InboxView() {
             </AnimatePresence>
           </ol>
           {items.length < total && (
-            <div className="p-3"><button type="button" className="btn btn-ghost w-full" onClick={loadMore}>Load more</button></div>
+            <div className="p-3"><button type="button" className="btn btn-ghost w-full" onClick={loadMore} disabled={loadingMore}>{loadingMore ? "Loading…" : "Load more"}</button></div>
           )}
         </div>
 
@@ -157,9 +175,18 @@ function TicketDetail({ t, label, depts, onPatch }: {
   const [assignee, setAssignee] = useState(t.assignee ?? "");
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const cat = t.needs_review ? "review" : t.category;
   const late = t.status !== "resolved" && t.sla_breached;
-  const run = (b: Record<string, unknown>, msg?: string) => onPatch(b, msg).catch((e) => setErr((e as Error).message));
+  // One change at a time, so a double click can't send the same update twice.
+  const run = async (b: Record<string, unknown>, msg?: string) => {
+    if (busy) return;
+    setBusy(true);
+    setErr("");
+    try { await onPatch(b, msg); } catch (e) { setErr((e as Error).message); throw e; } finally { setBusy(false); }
+  };
+  const teamChanged = team !== t.category;
+  const assigneeChanged = assignee.trim() !== (t.assignee ?? "");
   const next = { open: [["in_progress", "Start work"], ["resolved", "Resolve"]], in_progress: [["resolved", "Resolve"], ["open", "Back to queue"]], resolved: [["open", "Reopen"]] }[t.status];
   const EVENT: Record<string, (d: Record<string, any>) => string> = { // eslint-disable-line @typescript-eslint/no-explicit-any
     created: (d) => `Routed to ${d.department} at ${pct(d.confidence)} confidence`,
@@ -196,7 +223,7 @@ function TicketDetail({ t, label, depts, onPatch }: {
           {t.rules_applied.map((r) => (
             <li key={r.rule} className="flex gap-2 rounded-lg bg-surface-2 px-3 py-2 text-xs text-ink-2"
               style={{ boxShadow: `inset 3px 0 0 ${r.rule === "low_confidence" ? "var(--review)" : "var(--fraud)"}` }}>
-              <b className="whitespace-nowrap text-ink">{RULE_NAMES[r.rule] ?? r.rule}</b>{r.detail}
+              <b className="whitespace-nowrap text-ink">{ruleName(r.rule)}</b>{r.detail}
             </li>
           ))}
         </ul>
@@ -213,22 +240,25 @@ function TicketDetail({ t, label, depts, onPatch }: {
       <div className="mt-6 grid gap-3 border-t border-line pt-5">
         <Row label="Status">
           {next.map(([v, l], i) => (
-            <button key={v} type="button" className={`btn h-8 px-3 text-[13px] ${i ? "btn-ghost" : "btn-primary"}`} onClick={() => run({ status: v })}>{l}</button>
+            <button key={v} type="button" className={`btn h-8 px-3 text-[13px] ${i ? "btn-ghost" : "btn-primary"}`} disabled={busy} onClick={() => run({ status: v }).catch(() => {})}>{l}</button>
           ))}
         </Row>
         <Row label="Route to">
           <select className="input h-8 min-w-40 flex-1" value={team} onChange={(e) => setTeam(e.target.value)} aria-label="Route to team">
             {depts.map(([c, d]) => <option key={c} value={c}>{d}</option>)}
           </select>
-          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" onClick={() => run({ category: team }, `Moved to ${depts.find((x) => x[0] === team)?.[1]}. Saved as training feedback.`)}>Re-route</button>
+          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" disabled={busy || !teamChanged}
+            onClick={() => run({ category: team }, `Moved to ${depts.find((x) => x[0] === team)?.[1]}. Saved as training feedback.`).catch(() => {})}>Re-route</button>
         </Row>
         <Row label="Assignee">
-          <input className="input h-8 min-w-40 flex-1" value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="Agent name" maxLength={64} aria-label="Assignee" />
-          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" onClick={() => run({ assignee: assignee.trim() })}>Assign</button>
+          <input className="input h-8 min-w-40 flex-1" value={assignee} onChange={(e) => setAssignee(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !busy && assigneeChanged) run({ assignee: assignee.trim() }).catch(() => {}); }} placeholder="Agent name" maxLength={64} aria-label="Assignee" />
+          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" disabled={busy || !assigneeChanged} onClick={() => run({ assignee: assignee.trim() }).catch(() => {})}>Assign</button>
         </Row>
         <Row label="Note">
-          <input className="input h-8 min-w-40 flex-1" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Internal note for other agents" maxLength={2000} aria-label="Internal note" />
-          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" onClick={() => { if (note.trim()) run({ note: note.trim() }).then(() => setNote("")); }}>Add</button>
+          <input className="input h-8 min-w-40 flex-1" value={note} onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !busy && note.trim()) run({ note: note.trim() }).then(() => setNote(""), () => {}); }} placeholder="Internal note for other agents" maxLength={2000} aria-label="Internal note" />
+          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" disabled={busy || !note.trim()} onClick={() => run({ note: note.trim() }).then(() => setNote(""), () => {})}>Add</button>
         </Row>
         {err && <p className="text-[13px] text-danger">{err}</p>}
       </div>
