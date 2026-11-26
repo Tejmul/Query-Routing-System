@@ -3,7 +3,7 @@
 
 # 🏦 Routing Desk
 
-### Intelligent Banking Query Classification & Routing 
+### Intelligent Banking Query Classification & Routing Platform
 
 An end-to-end NLP-powered banking automation platform that classifies customer queries, protects sensitive information, and intelligently routes requests to the appropriate department with priority-based SLA management.
 
