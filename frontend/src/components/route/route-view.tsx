@@ -283,11 +283,13 @@ interface ModelCard {
 
 function Hero() {
   const [card, setCard] = useState<ModelCard | null>(null);
-  useEffect(() => { api<ModelCard>("/api/v1/model").then(setCard).catch(() => {}); }, []);
-  const fraud = card?.metrics.category.per_class.fraud;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { api<ModelCard>("/api/v1/model").then(setCard).catch(() => setFailed(true)); }, []);
+  const fraud = card?.metrics.category.per_class?.fraud;
+  // A model card without a fraud class (or an older format) just skips that tile instead of crashing.
   const stats = card ? [
     { v: card.metrics.category.accuracy * 100, suffix: "%", d: 1, l: `right team, on ${card.data.test_rows.toLocaleString()} unseen messages` },
-    { v: Math.round(fraud!.recall * fraud!.support), suffix: ` / ${fraud!.support}`, d: 0, l: "fraud reports caught" },
+    ...(fraud ? [{ v: Math.round(fraud.recall * fraud.support), suffix: ` / ${fraud.support}`, d: 0, l: "fraud reports caught" }] : []),
     { v: card.metrics.intent.n_intents, suffix: " topics", d: 0, l: `exact topic ${(card.metrics.intent.accuracy * 100).toFixed(1)}% of the time` },
     { v: 1000000, suffix: "", d: 0, l: "messages routed in 19.3 s on one laptop" },
   ] : [];
@@ -300,7 +302,7 @@ function Hero() {
         </h1>
       </motion.div>
       <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4 lg:grid-cols-2 lg:pb-1 xl:w-[440px]">
-        {(stats.length ? stats : Array.from({ length: 4 }, () => null)).map((st, i) => (
+        {(stats.length ? stats : failed ? [] : Array.from({ length: 4 }, () => null)).map((st, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.06, duration: 0.4 }}
             className="border-l border-line-strong pl-3.5">
             {st ? (
