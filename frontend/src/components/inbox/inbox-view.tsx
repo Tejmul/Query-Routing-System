@@ -178,9 +178,18 @@ function TicketDetail({ t, label, depts, onPatch }: {
   const [assignee, setAssignee] = useState(t.assignee ?? "");
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const cat = t.needs_review ? "review" : t.category;
   const late = t.status !== "resolved" && t.sla_breached;
-  const run = (b: Record<string, unknown>, msg?: string) => onPatch(b, msg).catch((e) => setErr((e as Error).message));
+  // One change at a time, so a double click can't send the same update twice.
+  const run = async (b: Record<string, unknown>, msg?: string) => {
+    if (busy) return;
+    setBusy(true);
+    setErr("");
+    try { await onPatch(b, msg); } catch (e) { setErr((e as Error).message); throw e; } finally { setBusy(false); }
+  };
+  const teamChanged = team !== t.category;
+  const assigneeChanged = assignee.trim() !== (t.assignee ?? "");
   const next = { open: [["in_progress", "Start work"], ["resolved", "Resolve"]], in_progress: [["resolved", "Resolve"], ["open", "Back to queue"]], resolved: [["open", "Reopen"]] }[t.status];
   const EVENT: Record<string, (d: Record<string, any>) => string> = { // eslint-disable-line @typescript-eslint/no-explicit-any
     created: (d) => `Routed to ${d.department} at ${pct(d.confidence)} confidence`,
@@ -234,22 +243,23 @@ function TicketDetail({ t, label, depts, onPatch }: {
       <div className="mt-6 grid gap-3 border-t border-line pt-5">
         <Row label="Status">
           {next.map(([v, l], i) => (
-            <button key={v} type="button" className={`btn h-8 px-3 text-[13px] ${i ? "btn-ghost" : "btn-primary"}`} onClick={() => run({ status: v })}>{l}</button>
+            <button key={v} type="button" className={`btn h-8 px-3 text-[13px] ${i ? "btn-ghost" : "btn-primary"}`} disabled={busy} onClick={() => run({ status: v }).catch(() => {})}>{l}</button>
           ))}
         </Row>
         <Row label="Route to">
           <select className="input h-8 min-w-40 flex-1" value={team} onChange={(e) => setTeam(e.target.value)} aria-label="Route to team">
             {depts.map(([c, d]) => <option key={c} value={c}>{d}</option>)}
           </select>
-          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" onClick={() => run({ category: team }, `Moved to ${depts.find((x) => x[0] === team)?.[1]}. Saved as training feedback.`)}>Re-route</button>
+          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" disabled={busy || !teamChanged}
+            onClick={() => run({ category: team }, `Moved to ${depts.find((x) => x[0] === team)?.[1]}. Saved as training feedback.`).catch(() => {})}>Re-route</button>
         </Row>
         <Row label="Assignee">
           <input className="input h-8 min-w-40 flex-1" value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="Agent name" maxLength={64} aria-label="Assignee" />
-          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" onClick={() => run({ assignee: assignee.trim() })}>Assign</button>
+          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" disabled={busy || !assigneeChanged} onClick={() => run({ assignee: assignee.trim() }).catch(() => {})}>Assign</button>
         </Row>
         <Row label="Note">
           <input className="input h-8 min-w-40 flex-1" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Internal note for other agents" maxLength={2000} aria-label="Internal note" />
-          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" onClick={() => { if (note.trim()) run({ note: note.trim() }).then(() => setNote("")); }}>Add</button>
+          <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" disabled={busy || !note.trim()} onClick={() => run({ note: note.trim() }).then(() => setNote(""), () => {})}>Add</button>
         </Row>
         {err && <p className="text-[13px] text-danger">{err}</p>}
       </div>
