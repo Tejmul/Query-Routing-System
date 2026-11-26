@@ -254,11 +254,13 @@ function TicketDetail({ t, label, depts, onPatch }: {
             onClick={() => run({ category: team }, `Moved to ${depts.find((x) => x[0] === team)?.[1]}. Saved as training feedback.`).catch(() => {})}>Re-route</button>
         </Row>
         <Row label="Assignee">
-          <input className="input h-8 min-w-40 flex-1" value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="Agent name" maxLength={64} aria-label="Assignee" />
+          <input className="input h-8 min-w-40 flex-1" value={assignee} onChange={(e) => setAssignee(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !busy && assigneeChanged) run({ assignee: assignee.trim() }).catch(() => {}); }} placeholder="Agent name" maxLength={64} aria-label="Assignee" />
           <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" disabled={busy || !assigneeChanged} onClick={() => run({ assignee: assignee.trim() }).catch(() => {})}>Assign</button>
         </Row>
         <Row label="Note">
-          <input className="input h-8 min-w-40 flex-1" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Internal note for other agents" maxLength={2000} aria-label="Internal note" />
+          <input className="input h-8 min-w-40 flex-1" value={note} onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !busy && note.trim()) run({ note: note.trim() }).then(() => setNote(""), () => {}); }} placeholder="Internal note for other agents" maxLength={2000} aria-label="Internal note" />
           <button type="button" className="btn btn-ghost h-8 px-3 text-[13px]" disabled={busy || !note.trim()} onClick={() => run({ note: note.trim() }).then(() => setNote(""), () => {})}>Add</button>
         </Row>
         {err && <p className="text-[13px] text-danger">{err}</p>}
