@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { Panel, PageHead } from "@/components/page-head";
 import { api, send } from "@/lib/api";
@@ -27,6 +27,8 @@ export function InboxView() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [error, setError] = useState("");
+  const [loadingMore, setLoadingMore] = useState(false);
+  const latestFetch = useRef<typeof fetchPage | null>(null);
 
   useEffect(() => { const t = setTimeout(() => setQuery(q.trim()), 250); return () => clearTimeout(t); }, [q]);
 
@@ -43,16 +45,30 @@ export function InboxView() {
   // First page whenever the filters change; a newer request wins over a slower older one.
   useEffect(() => {
     let current = true;
+    latestFetch.current = fetchPage;
     fetchPage(1)
       .then((r) => { if (current) { setError(""); setTotal(r.total); setItems(r.items); setPage(1); } })
       .catch((err) => current && setError((err as Error).message));
     return () => { current = false; };
   }, [fetchPage]);
 
+  // One page at a time, and a page fetched for old filters is dropped instead of appended.
   function loadMore() {
-    fetchPage(page + 1)
-      .then((r) => { setTotal(r.total); setItems((prev) => [...prev, ...r.items]); setPage(page + 1); })
-      .catch((err) => setError((err as Error).message));
+    if (loadingMore) return;
+    const source = fetchPage;
+    setLoadingMore(true);
+    source(page + 1)
+      .then((r) => {
+        if (latestFetch.current !== source) return;
+        setTotal(r.total);
+        setItems((prev) => {
+          const seen = new Set(prev.map((t) => t.ref));
+          return [...prev, ...r.items.filter((t) => !seen.has(t.ref))];
+        });
+        setPage(page + 1);
+      })
+      .catch((err) => setError((err as Error).message))
+      .finally(() => setLoadingMore(false));
   }
 
   const open = useCallback((ref: string) => {
@@ -129,7 +145,7 @@ export function InboxView() {
             </AnimatePresence>
           </ol>
           {items.length < total && (
-            <div className="p-3"><button type="button" className="btn btn-ghost w-full" onClick={loadMore}>Load more</button></div>
+            <div className="p-3"><button type="button" className="btn btn-ghost w-full" onClick={loadMore} disabled={loadingMore}>{loadingMore ? "Loading…" : "Load more"}</button></div>
           )}
         </div>
 
